@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [adminStats, setAdminStats] = useState(null);
   const [events, setEvents] = useState([]);
+  const [myRegistrations, setMyRegistrations] = useState([]);
 
   useEffect(() => {
     async function loadData() {
@@ -27,8 +28,14 @@ export default function Dashboard() {
           const res = await api.get("/events");
           setEvents(res.data);
         }
+
+        if (user?.role === "participant") {
+          const res = await api.get("/registrations/my");
+          setMyRegistrations(res.data);
+        }
+
       } catch (err) {
-        console.log("Dashboard load error");
+        console.log("Dashboard load error:", err);
       } finally {
         setLoading(false);
       }
@@ -39,9 +46,14 @@ export default function Dashboard() {
 
   if (loading) return <Loader />;
 
+  const isRegistered = (eventId) => {
+    return myRegistrations.some(
+      (reg) => reg.event._id === eventId
+    );
+  };
+
   return (
     <FadeIn>
-      {/* PAGE HEADING */}
       <h2 className="text-2xl font-bold mb-6">
         Welcome, {user?.name}
       </h2>
@@ -50,27 +62,21 @@ export default function Dashboard() {
       {user?.role === "admin" && adminStats && (
         <div className="grid md:grid-cols-3 gap-6">
           <Card>
-            <h3 className="text-lg font-semibold">
-              Total Users
-            </h3>
+            <h3 className="text-lg font-semibold">Total Users</h3>
             <p className="text-3xl font-bold text-indigo-600 mt-2">
               {adminStats.totalUsers}
             </p>
           </Card>
 
           <Card>
-            <h3 className="text-lg font-semibold">
-              Total Events
-            </h3>
+            <h3 className="text-lg font-semibold">Total Events</h3>
             <p className="text-3xl font-bold text-indigo-600 mt-2">
               {adminStats.totalEvents}
             </p>
           </Card>
 
           <Card>
-            <h3 className="text-lg font-semibold">
-              Registrations
-            </h3>
+            <h3 className="text-lg font-semibold">Registrations</h3>
             <p className="text-3xl font-bold text-indigo-600 mt-2">
               {adminStats.totalRegistrations}
             </p>
@@ -126,19 +132,36 @@ export default function Dashboard() {
                   </p>
 
                   <button
+                    disabled={isRegistered(event._id)}
                     onClick={async () => {
                       try {
-                        await api.post(
+                        const res = await api.post(
                           `/registrations/${event._id}`
                         );
-                        alert("Registered successfully!");
-                      } catch {
-                        alert("Already registered");
+
+                        alert(res.data.message);
+
+                        // refresh registrations after success
+                        const updated =
+                          await api.get("/registrations/my");
+                        setMyRegistrations(updated.data);
+
+                      } catch (err) {
+                        alert(
+                          err.response?.data?.message ||
+                          "Registration failed"
+                        );
                       }
                     }}
-                    className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition"
+                    className={`mt-4 px-4 py-2 rounded-lg transition ${
+                      isRegistered(event._id)
+                        ? "bg-gray-400 cursor-not-allowed text-white"
+                        : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                    }`}
                   >
-                    Register
+                    {isRegistered(event._id)
+                      ? "Already Registered"
+                      : "Register"}
                   </button>
                 </Card>
               ))
