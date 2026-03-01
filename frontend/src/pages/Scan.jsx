@@ -10,7 +10,7 @@ export default function Scan() {
   useEffect(() => {
     const startScanner = async () => {
       try {
-        // 🔥 IMPORTANT: clear old instance if exists
+        // 🔥 Cleanup old scanner if exists
         if (scannerRef.current) {
           try {
             await scannerRef.current.stop();
@@ -24,18 +24,12 @@ export default function Scan() {
         const scanner = new Html5Qrcode(readerId);
         scannerRef.current = scanner;
 
-        const cameras = await Html5Qrcode.getCameras();
-
-        if (!cameras || cameras.length === 0) {
-          toast.error("No camera found");
-          return;
-        }
-
+        // 🔥 FORCE BACK CAMERA USING facingMode
         await scanner.start(
-          cameras[0].id,
+          { facingMode: "environment" }, 
           {
             fps: 10,
-            qrbox: 250,
+            qrbox: { width: 250, height: 250 },
             aspectRatio: 1.0,
           },
           async (decodedText) => {
@@ -46,14 +40,15 @@ export default function Scan() {
 
               toast.success("Attendance Marked!");
 
-              // stop after successful scan
+              // Stop after successful scan
               await scanner.stop();
               await scanner.clear();
-            } catch {
-              toast.error("Invalid QR");
+            } catch (err) {
+              toast.error("Invalid or Already Scanned QR");
             }
           }
         );
+
       } catch (err) {
         console.error(err);
         toast.error("Camera failed to start");
@@ -62,6 +57,7 @@ export default function Scan() {
 
     startScanner();
 
+    // 🔥 Cleanup when component unmount
     return () => {
       const cleanup = async () => {
         if (scannerRef.current) {
