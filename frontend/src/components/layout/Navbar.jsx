@@ -12,21 +12,18 @@ export default function Navbar() {
       initial={{ y: -40 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.3 }}
-      className="fixed top-0 left-0 w-full h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-50"
+      className="w-screen h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 shadow-sm"
     >
-      <div className="h-full flex items-center justify-between px-8">
+      <div className="h-full w-full flex items-center justify-between px-6">
 
-        {/* Logo */}
         <div
-          onClick={() => navigate("/")}
-          className="text-lg font-semibold cursor-pointer text-indigo-600"
+          onClick={() => navigate("/dashboard")}
+          className="text-xl font-bold cursor-pointer text-indigo-600"
         >
           SmartEvent
         </div>
 
-        {/* Right Side */}
-        <div className="flex items-center gap-4">
-
+        <div className="flex items-center gap-3">
           <button
             onClick={toggleTheme}
             className="p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -44,8 +41,8 @@ export default function Navbar() {
             <LogOut size={16} />
             Logout
           </button>
-
         </div>
+
       </div>
     </motion.nav>
   );

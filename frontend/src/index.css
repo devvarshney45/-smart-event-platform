@@ -5,11 +5,20 @@
 @tailwind utilities;
 
 /* ============================= */
-/* Full Height Fix (IMPORTANT) */
+/* Global Reset */
 /* ============================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
 html, body, #root {
   height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 html {
@@ -17,16 +26,15 @@ html {
 }
 
 /* ============================= */
-/* Base Body */
+/* Base Body (NO GRADIENT HERE) */
 /* ============================= */
 
 body {
-  @apply bg-gradient-to-br from-slate-50 via-white to-indigo-50
+  @apply bg-slate-100
          text-slate-900
-         dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-950 dark:to-black
+         dark:bg-slate-900
          dark:text-slate-200
          font-sans;
-  margin: 0;
 }
 
 /* Remove default margins */

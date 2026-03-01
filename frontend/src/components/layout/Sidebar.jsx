@@ -4,60 +4,86 @@ import { useAppStore } from "../../app/store";
 
 export default function Sidebar() {
   const user = useAppStore((state) => state.user);
-
-  const role = user?.role;
+  const role = user?.role || "";
 
   const menu = [
     {
       label: "Home",
-      icon: <Home size={18} />,
+      icon: Home,
       path: "/dashboard",
       roles: ["admin", "organizer", "volunteer", "participant"],
+      exact: true,
     },
     {
-      label: "Events",
-      icon: <Calendar size={18} />,
-      path: "/create-event",
-      roles: ["admin", "organizer"],
+      label: "Users",
+      icon: Users,
+      path: "/dashboard/admin-users",
+      roles: ["admin"],
+    },
+    {
+      label: "Create Event",
+      icon: Calendar,
+      path: "/dashboard/create-event",
+      roles: ["organizer"],
     },
     {
       label: "My Events",
-      icon: <Users size={18} />,
-      path: "/my-events",
-      roles: ["admin", "organizer"],
+      icon: Calendar,
+      path: "/dashboard/my-events",
+      roles: ["organizer"],
     },
     {
       label: "Scan",
-      icon: <QrCode size={18} />,
-      path: "/scan",
-      roles: ["admin", "volunteer"],
+      icon: QrCode,
+      path: "/dashboard/scan",
+      roles: ["volunteer"],
     },
   ];
 
-  return (
-    <div className="hidden md:flex flex-col w-64 bg-white dark:bg-slate-800 shadow p-6">
-      <div className="text-lg font-bold text-primary mb-6">Dashboard</div>
+  const panelTitle =
+    role === "admin"
+      ? "Admin Panel"
+      : role === "organizer"
+      ? "Organizer Panel"
+      : role === "volunteer"
+      ? "Volunteer Panel"
+      : "Dashboard";
 
-      <nav className="flex flex-col gap-4">
+  return (
+    <div className="flex flex-col h-full pt-6 px-6 pb-6">
+
+      {/* Panel Title */}
+      <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-8">
+        {panelTitle}
+      </h2>
+
+      {/* Navigation */}
+      <nav className="flex flex-col gap-3">
         {menu
           .filter((item) => item.roles.includes(role))
-          .map((item, index) => (
-            <NavLink
-              key={index}
-              to={item.path}
-              className={({ isActive }) =>
-                `flex items-center gap-3 p-2 rounded-lg transition ${
-                  isActive
-                    ? "bg-primary text-white"
-                    : "hover:bg-gray-100 dark:hover:bg-slate-700"
-                }`
-              }
-            >
-              {item.icon}
-              {item.label}
-            </NavLink>
-          ))}
+          .map((item, index) => {
+            const Icon = item.icon;
+
+            return (
+              <NavLink
+                key={index}
+                to={item.path}
+                end={item.exact}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-2 rounded-lg transition ${
+                    isActive
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  }`
+                }
+              >
+                <Icon size={18} />
+                <span className="font-medium">{item.label}</span>
+              </NavLink>
+            );
+          })}
       </nav>
+
     </div>
   );
 }
