@@ -1,29 +1,48 @@
+import { useState } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import { Outlet } from "react-router-dom";
 
 export default function Layout() {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <div className="h-screen w-full flex flex-col bg-slate-100 dark:bg-slate-900">
+    <div className="w-full min-h-screen bg-slate-100 dark:bg-slate-900 flex flex-col">
 
-      {/* ================= NAVBAR ================= */}
-      <header className="h-16 w-full shrink-0 border-b border-slate-200 dark:border-slate-700">
-        <Navbar />
-      </header>
+      {/* Navbar */}
+      <div className="h-16 shrink-0 w-full">
+        <Navbar toggleSidebar={() => setIsOpen(!isOpen)} />
+      </div>
 
-      {/* ================= MAIN BODY ================= */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 w-full overflow-hidden relative">
 
-        {/* ===== SIDEBAR ===== */}
-        <aside className="w-64 shrink-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 overflow-y-auto">
-          <Sidebar />
+        {/* Mobile Overlay */}
+        {isOpen && (
+          <div
+            className="fixed inset-0 bg-black/40 z-40 md:hidden"
+            onClick={() => setIsOpen(false)}
+          ></div>
+        )}
+
+        {/* Sidebar */}
+        <aside
+          className={`
+            fixed md:static z-50
+            top-16 md:top-0
+            h-[calc(100vh-4rem)] md:h-auto
+            w-64
+            bg-white dark:bg-slate-800
+            border-r border-slate-200 dark:border-slate-700
+            transform transition-transform duration-300
+            ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          `}
+        >
+          <Sidebar closeSidebar={() => setIsOpen(false)} />
         </aside>
 
-        {/* ===== PAGE CONTENT ===== */}
-        <main className="flex-1 overflow-y-auto px-8 py-6">
-          <div className="max-w-7xl mx-auto w-full">
-            <Outlet />
-          </div>
+        {/* Content */}
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+          <Outlet />
         </main>
 
       </div>
