@@ -2,33 +2,83 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/generateToken.js";
 
+
+// ================= REGISTER =================
+
 export const register = async (req, res) => {
-  const { name, email, password } = req.body;
+  try {
+    const { name, email, password } = req.body;
 
-  const exists = await User.findOne({ email });
-  if (exists) return res.status(400).json({ message: "Email exists" });
+    // Check if user exists
+    const exists = await User.findOne({ email });
+    if (exists) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
 
-  const hashed = await bcrypt.hash(password, 10);
+    // Hash password
+    const hashed = await bcrypt.hash(password, 10);
 
-  const user = await User.create({
-    name,
-    email,
-    password: hashed
-  });
+    // Create user
+    const user = await User.create({
+      name,
+      email,
+      password: hashed,
+      role: "participant" // default role
+    });
 
-  res.status(201).json({
-    token: generateToken(user)
-  });
+    // Generate token
+    const token = generateToken(user._id, user.role);
+
+    res.status(201).json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    console.error("Register Error:", error.message);
+    res.status(500).json({ message: "Server Error" });
+  }
 };
 
+
+// ================= LOGIN =================
+
 export const login = async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
 
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(400).json({ message: "Invalid credentials" });
+    // Compare password
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
 
-  res.json({ token: generateToken(user) });
+    // Generate token
+    const token = generateToken(user._id, user.role);
+
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    console.error("Login Error:", error.message);
+    res.status(500).json({ message: "Server Error" });
+  }
 };
