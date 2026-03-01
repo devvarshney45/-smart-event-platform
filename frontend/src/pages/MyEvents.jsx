@@ -1,64 +1,132 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../services/axios";
 import Layout from "../components/layout/Layout";
 import Card from "../components/ui/Card";
 import Loader from "../components/ui/Loader";
 import Button from "../components/ui/Button";
-import api from "../services/axios";
 
 export default function MyEvents() {
-  const [events, setEvents] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchMyEvents() {
       try {
-        const res = await api.get("/registration/my");
-        setEvents(res.data);
-      } catch {
-        setEvents([]);
+        const res = await api.get("/events?mine=true");
+        setEvents(res.data || []);
+      } catch (err) {
+        console.log("Error loading events");
+      } finally {
+        setLoading(false);
       }
     }
-    fetchData();
+
+    fetchMyEvents();
   }, []);
 
-  if (!events) return <Loader />;
-
-  if (events.length === 0)
-    return (
-      <Layout>
-        <div className="text-center mt-20 text-slate-500">
-          No registrations yet.
-        </div>
-      </Layout>
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this event?"
     );
+    if (!confirmDelete) return;
+
+    try {
+      await api.delete(`/events/${id}`);
+      setEvents((prev) => prev.filter((e) => e._id !== id));
+    } catch (err) {
+      alert("Delete failed");
+    }
+  };
+
+  if (loading) return <Loader />;
 
   return (
     <Layout>
-      <div className="grid md:grid-cols-2 gap-6">
-        {events.map((reg) => (
-          <Card key={reg._id}>
-            <h3 className="text-xl font-semibold">
-              {reg.event.title}
-            </h3>
-            <p className="text-sm text-slate-500">
-              {new Date(reg.event.date).toLocaleDateString()}
-            </p>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">My Events</h2>
 
-            {reg.attended && (
-              <Button
-                className="mt-4"
-                onClick={() =>
-                  window.open(
-                    `http://localhost:5000/api/certificate/${reg.event._id}`,
-                    "_blank"
-                  )
-                }
-              >
-                Download Certificate
-              </Button>
-            )}
-          </Card>
-        ))}
+        <Button onClick={() => navigate("/create-event")}>
+          + Create Event
+        </Button>
       </div>
+
+      {events.length === 0 ? (
+        <div className="text-gray-500 text-center mt-10 text-lg">
+          No events created yet.
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-6">
+          {events.map((event) => (
+            <Card key={event._id}>
+              {/* Title */}
+              <h3 className="font-semibold text-lg mb-2">
+                {event.title || "Untitled Event"}
+              </h3>
+
+              {/* Description */}
+              <p className="text-gray-500 text-sm mb-3">
+                {event.description || "No description available"}
+              </p>
+
+              {/* Safe Info Section */}
+              <div className="text-sm text-gray-400 space-y-1">
+                <p>
+                  <span className="font-medium">Date:</span>{" "}
+                  {event.date
+                    ? new Date(event.date).toLocaleDateString()
+                    : "N/A"}
+                </p>
+
+                <p>
+                  <span className="font-medium">Venue:</span>{" "}
+                  {event.venue || "N/A"}
+                </p>
+
+                <p>
+                  <span className="font-medium">Capacity:</span>{" "}
+                  {event.capacity || "N/A"}
+                </p>
+
+                <p>
+                  <span className="font-medium">Deadline:</span>{" "}
+                  {event.deadline
+                    ? new Date(event.deadline).toLocaleDateString()
+                    : "N/A"}
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 mt-4 flex-wrap">
+                <Button
+                  onClick={() =>
+                    navigate(`/edit-event/${event._id}`)
+                  }
+                >
+                  Edit
+                </Button>
+
+                <Button
+                  onClick={() =>
+                    navigate(`/event/${event._id}/registrations`)
+                  }
+                  className="bg-green-600"
+                >
+                  Registrations
+                </Button>
+
+                <Button
+                  onClick={() => handleDelete(event._id)}
+                  className="bg-red-500"
+                >
+                  Delete
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </Layout>
   );
 }

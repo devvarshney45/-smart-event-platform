@@ -7,22 +7,15 @@ import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
 import CreateEvent from "../pages/CreateEvent";
 import MyEvents from "../pages/MyEvents";
-import VolunteerScan from "../pages/VolunteerScan";
-
-/* =========================
-   Protected Route Wrapper
-========================= */
+import Scan from "../pages/Scan";
+import Certificate from "../pages/Certificate";
 
 function ProtectedRoute({ children, allowedRoles }) {
   const token = useAppStore((state) => state.token);
   const user = useAppStore((state) => state.user);
 
-  // Not logged in
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!token) return <Navigate to="/login" replace />;
 
-  // If roles restriction exists
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -30,29 +23,24 @@ function ProtectedRoute({ children, allowedRoles }) {
   return children;
 }
 
-/* =========================
-   Public Route Wrapper
-========================= */
-
 function PublicRoute({ children }) {
   const token = useAppStore((state) => state.token);
-
-  if (token) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return children;
+  return token ? <Navigate to="/dashboard" replace /> : children;
 }
-
-/* =========================
-        App Routes
-========================= */
 
 export default function AppRoutes() {
   return (
     <Routes>
+
       {/* Public */}
-      <Route path="/" element={<Landing />} />
+      <Route
+        path="/"
+        element={
+          <PublicRoute>
+            <Landing />
+          </PublicRoute>
+        }
+      />
 
       <Route
         path="/login"
@@ -73,11 +61,17 @@ export default function AppRoutes() {
       />
 
       {/* Protected */}
+
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute
-            allowedRoles={["admin", "organizer", "volunteer", "participant"]}
+            allowedRoles={[
+              "admin",
+              "organizer",
+              "volunteer",
+              "participant",
+            ]}
           >
             <Dashboard />
           </ProtectedRoute>
@@ -87,7 +81,7 @@ export default function AppRoutes() {
       <Route
         path="/create-event"
         element={
-          <ProtectedRoute allowedRoles={["organizer", "admin"]}>
+          <ProtectedRoute allowedRoles={["admin", "organizer"]}>
             <CreateEvent />
           </ProtectedRoute>
         }
@@ -96,7 +90,7 @@ export default function AppRoutes() {
       <Route
         path="/my-events"
         element={
-          <ProtectedRoute allowedRoles={["organizer", "admin"]}>
+          <ProtectedRoute allowedRoles={["admin", "organizer"]}>
             <MyEvents />
           </ProtectedRoute>
         }
@@ -105,14 +99,23 @@ export default function AppRoutes() {
       <Route
         path="/scan"
         element={
-          <ProtectedRoute allowedRoles={["volunteer", "admin"]}>
-            <VolunteerScan />
+          <ProtectedRoute allowedRoles={["admin", "volunteer"]}>
+            <Scan />
           </ProtectedRoute>
         }
       />
 
-      {/* Fallback */}
+      <Route
+        path="/certificate/:id"
+        element={
+          <ProtectedRoute allowedRoles={["participant", "admin"]}>
+            <Certificate />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="*" element={<Navigate to="/" replace />} />
+
     </Routes>
   );
 }

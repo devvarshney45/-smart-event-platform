@@ -1,64 +1,66 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import api from "../services/axios";
 import { useAppStore } from "../app/store";
-import { useNavigate } from "react-router-dom";
-import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
-import toast from "react-hot-toast";
+import Button from "../components/ui/Button";
+import FadeIn from "../components/animations/FadeIn";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const setToken = useAppStore((state) => state.setToken);
   const navigate = useNavigate();
+  const setUser = useAppStore((state) => state.setUser);
+  const setToken = useAppStore((state) => state.setToken);
 
-  const handleLogin = async (e) => {
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
-      const res = await api.post("/auth/login", { email, password });
+      const res = await api.post("/auth/login", form);
+
       setToken(res.data.token);
-      toast.success("Login successful!");
+      setUser(res.data.user);
+
       navigate("/dashboard");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Login failed");
+      alert(err.response?.data?.message || "Login failed");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-hero-gradient px-6">
-      <motion.form
-        onSubmit={handleLogin}
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass p-10 rounded-3xl shadow-xl w-full max-w-md"
-      >
-        <h2 className="text-3xl font-bold mb-6 text-center">
-          Welcome Back
-        </h2>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
+      <FadeIn>
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white dark:bg-slate-800 p-8 rounded-xl shadow w-96 space-y-4"
+        >
+          <h2 className="text-2xl font-bold text-center">Login</h2>
 
-        <div className="space-y-4">
           <Input
-            label="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
+            placeholder="Email"
+            type="email"
+            value={form.email}
+            onChange={(e) =>
+              setForm({ ...form, email: e.target.value })
+            }
           />
+
           <Input
-            label="Password"
+            placeholder="Password"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
+            value={form.password}
+            onChange={(e) =>
+              setForm({ ...form, password: e.target.value })
+            }
           />
-        </div>
 
-        <div className="mt-6">
-          <Button type="submit" className="w-full">
-            Login
-          </Button>
-        </div>
-      </motion.form>
+          <Button type="submit">Login</Button>
+        </form>
+      </FadeIn>
     </div>
   );
 }

@@ -1,21 +1,27 @@
 import { BrowserRouter } from "react-router-dom";
-import { Toaster } from "react-hot-toast";
+import { AnimatePresence } from "framer-motion";
+import { useEffect } from "react";
 import { useAppStore } from "./app/store";
-import useTheme from "./hooks/useTheme";
 import AppRoutes from "./routes/AppRoutes";
 
-function App() {
+export default function App() {
   const theme = useAppStore((state) => state.theme);
-  useTheme(theme);
+
+  // Apply dark mode class to html
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [theme]);
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-hero-gradient">
+      <AnimatePresence mode="wait">
         <AppRoutes />
-        <Toaster position="top-right" />
-      </div>
+      </AnimatePresence>
     </BrowserRouter>
   );
 }
-
-export default App;

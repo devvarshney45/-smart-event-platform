@@ -1,98 +1,52 @@
-import { useState, useEffect } from "react";
-import { Menu, Sun, Moon, LogOut } from "lucide-react";
+import { Moon, Sun, LogOut } from "lucide-react";
 import { useAppStore } from "../../app/store";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 export default function Navbar() {
-  const toggleTheme = useAppStore((state) => state.toggleTheme);
-  const theme = useAppStore((state) => state.theme);
-  const logout = useAppStore((state) => state.logout);
-
+  const { toggleTheme, theme, logout } = useAppStore();
   const navigate = useNavigate();
-
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  // ✅ Proper scroll listener
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   return (
     <motion.nav
-      initial={{ y: -80 }}
+      initial={{ y: -40 }}
       animate={{ y: 0 }}
-      transition={{ duration: 0.4 }}
-      className={`fixed w-full z-50 px-6 py-4 flex justify-between items-center transition-all duration-300 ${
-        scrolled
-          ? "bg-white/70 dark:bg-black/50 backdrop-blur-xl shadow-lg"
-          : "bg-transparent"
-      }`}
+      transition={{ duration: 0.3 }}
+      className="fixed top-0 left-0 w-full h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 z-50"
     >
-      {/* Logo */}
-      <h1
-        onClick={() => navigate("/")}
-        className="text-xl font-bold text-primary cursor-pointer"
-      >
-        SmartEvent
-      </h1>
+      <div className="h-full flex items-center justify-between px-8">
 
-      {/* Right Controls */}
-      <div className="flex items-center gap-4">
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+        {/* Logo */}
+        <div
+          onClick={() => navigate("/")}
+          className="text-lg font-semibold cursor-pointer text-indigo-600"
         >
-          {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
-        </button>
+          SmartEvent
+        </div>
 
-        {/* Logout */}
-        <button
-          onClick={() => {
-            logout();
-            navigate("/login");
-          }}
-          className="hidden md:flex items-center gap-1 text-sm font-medium hover:text-primary transition"
-        >
-          <LogOut size={18} />
-          Logout
-        </button>
+        {/* Right Side */}
+        <div className="flex items-center gap-4">
 
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-        >
-          <Menu size={22} />
-        </button>
-      </div>
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
 
-      {/* Mobile Dropdown */}
-      {menuOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute top-16 right-6 bg-white dark:bg-gray-800 shadow-xl rounded-xl p-4 md:hidden"
-        >
           <button
             onClick={() => {
               logout();
               navigate("/login");
             }}
-            className="flex items-center gap-2 text-sm hover:text-primary transition"
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 transition"
           >
-            <LogOut size={18} />
+            <LogOut size={16} />
             Logout
           </button>
-        </motion.div>
-      )}
+
+        </div>
+      </div>
     </motion.nav>
   );
 }

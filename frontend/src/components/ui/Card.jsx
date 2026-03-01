@@ -1,12 +1,7 @@
-import { motion } from "framer-motion";
-
-export default function Card({ children, className = "" }) {
+export default function Card({ children }) {
   return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      className={`glass rounded-2xl shadow-xl p-6 ${className}`}
-    >
+    <div className="bg-white dark:bg-slate-800 shadow rounded-xl p-6">
       {children}
-    </motion.div>
+    </div>
   );
 }

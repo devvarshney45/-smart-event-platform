@@ -1,56 +1,62 @@
 import { NavLink } from "react-router-dom";
 import { Home, Calendar, Users, QrCode } from "lucide-react";
+import { useAppStore } from "../../app/store";
 
 export default function Sidebar() {
-  const base =
-    "flex items-center gap-3 px-3 py-2 rounded-lg transition-all";
-  const active = "bg-primary text-white";
-  const hover = "hover:bg-slate-200 dark:hover:bg-slate-800";
+  const user = useAppStore((state) => state.user);
+
+  const role = user?.role;
+
+  const menu = [
+    {
+      label: "Home",
+      icon: <Home size={18} />,
+      path: "/dashboard",
+      roles: ["admin", "organizer", "volunteer", "participant"],
+    },
+    {
+      label: "Events",
+      icon: <Calendar size={18} />,
+      path: "/create-event",
+      roles: ["admin", "organizer"],
+    },
+    {
+      label: "My Events",
+      icon: <Users size={18} />,
+      path: "/my-events",
+      roles: ["admin", "organizer"],
+    },
+    {
+      label: "Scan",
+      icon: <QrCode size={18} />,
+      path: "/scan",
+      roles: ["admin", "volunteer"],
+    },
+  ];
 
   return (
-    <div className="hidden md:flex flex-col w-64 min-h-screen bg-white/60 dark:bg-black/40 backdrop-blur-lg p-6 gap-6 border-r">
-      <div className="text-lg font-bold text-primary">
-        Dashboard
-      </div>
+    <div className="hidden md:flex flex-col w-64 bg-white dark:bg-slate-800 shadow p-6">
+      <div className="text-lg font-bold text-primary mb-6">Dashboard</div>
 
-      <nav className="flex flex-col gap-3 text-slate-700 dark:text-slate-200">
-
-        <NavLink
-          to="/dashboard"
-          className={({ isActive }) =>
-            `${base} ${hover} ${isActive ? active : ""}`
-          }
-        >
-          <Home size={18} /> Home
-        </NavLink>
-
-        <NavLink
-          to="/create-event"
-          className={({ isActive }) =>
-            `${base} ${hover} ${isActive ? active : ""}`
-          }
-        >
-          <Calendar size={18} /> Events
-        </NavLink>
-
-        <NavLink
-          to="/my-events"
-          className={({ isActive }) =>
-            `${base} ${hover} ${isActive ? active : ""}`
-          }
-        >
-          <Users size={18} /> Users
-        </NavLink>
-
-        <NavLink
-          to="/scan"
-          className={({ isActive }) =>
-            `${base} ${hover} ${isActive ? active : ""}`
-          }
-        >
-          <QrCode size={18} /> Scan
-        </NavLink>
-
+      <nav className="flex flex-col gap-4">
+        {menu
+          .filter((item) => item.roles.includes(role))
+          .map((item, index) => (
+            <NavLink
+              key={index}
+              to={item.path}
+              className={({ isActive }) =>
+                `flex items-center gap-3 p-2 rounded-lg transition ${
+                  isActive
+                    ? "bg-primary text-white"
+                    : "hover:bg-gray-100 dark:hover:bg-slate-700"
+                }`
+              }
+            >
+              {item.icon}
+              {item.label}
+            </NavLink>
+          ))}
       </nav>
     </div>
   );

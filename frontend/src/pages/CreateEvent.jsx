@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import api from "../services/axios";
 import Layout from "../components/layout/Layout";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
-import api from "../services/axios";
-import toast from "react-hot-toast";
+import FadeIn from "../components/animations/FadeIn";
 
 export default function CreateEvent() {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -16,45 +18,75 @@ export default function CreateEvent() {
     deadline: "",
   });
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (field, value) => {
+    setForm({ ...form, [field]: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
-      await api.post("/events", form);
-      toast.success("Event Created Successfully!");
+      await api.post("/events", {
+        ...form,
+        capacity: Number(form.capacity),
+      });
+
+      navigate("/my-events");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Error creating event");
+      alert(err.response?.data?.message || "Event creation failed");
     }
   };
 
   return (
     <Layout>
-      <motion.form
-        onSubmit={handleSubmit}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass p-8 rounded-2xl max-w-xl mx-auto space-y-4"
-      >
-        <h2 className="text-2xl font-bold mb-4">Create Event</h2>
+      <FadeIn>
+        <div className="max-w-xl mx-auto">
+          <h2 className="text-2xl font-bold mb-6">
+            Create Event
+          </h2>
 
-        {Object.keys(form).map((key) => (
-          <Input
-            key={key}
-            label={key}
-            name={key}
-            value={form[key]}
-            onChange={handleChange}
-            placeholder={`Enter ${key}`}
-          />
-        ))}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              placeholder="Title"
+              value={form.title}
+              onChange={(e) => handleChange("title", e.target.value)}
+            />
 
-        <Button type="submit" className="w-full">
-          Create Event
-        </Button>
-      </motion.form>
+            <Input
+              placeholder="Description"
+              value={form.description}
+              onChange={(e) => handleChange("description", e.target.value)}
+            />
+
+            <Input
+              type="date"
+              value={form.date}
+              onChange={(e) => handleChange("date", e.target.value)}
+            />
+
+            <Input
+              placeholder="Venue"
+              value={form.venue}
+              onChange={(e) => handleChange("venue", e.target.value)}
+            />
+
+            <Input
+              type="number"
+              placeholder="Capacity"
+              value={form.capacity}
+              onChange={(e) => handleChange("capacity", e.target.value)}
+            />
+
+            <Input
+              type="date"
+              value={form.deadline}
+              onChange={(e) => handleChange("deadline", e.target.value)}
+            />
+
+            <Button type="submit">Create Event</Button>
+          </form>
+        </div>
+      </FadeIn>
     </Layout>
   );
 }
