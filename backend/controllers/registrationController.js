@@ -9,31 +9,43 @@ import { sendEmail } from "../utils/sendEmail.js";
 import { v4 as uuidv4 } from "uuid";
 
 /**
- * Participant registers for an event
+ * ================= REGISTER FOR EVENT =================
  */
 export const registerForEvent = async (req, res, next) => {
   try {
     const { eventId } = req.params;
     const userId = req.user.id;
 
-    // Check event exists
+    // 1️⃣ Check event exists
     const event = await Event.findById(eventId);
     if (!event)
       return res.status(404).json({ message: "Event not found" });
 
-    // Check suspended
+    // 2️⃣ Check suspended
     if (event.isSuspended)
       return res.status(403).json({
         message: "This event has been suspended by admin"
       });
 
-    // Check deadline
+    // 3️⃣ Check deadline
     if (new Date() > new Date(event.deadline))
       return res.status(400).json({
         message: "Registration deadline has passed"
       });
 
-    // Check capacity
+    // 4️⃣ Check duplicate registration manually (extra safety)
+    const existingRegistration = await Registration.findOne({
+      user: userId,
+      event: eventId
+    });
+
+    if (existingRegistration) {
+      return res.status(400).json({
+        message: "You have already registered for this event"
+      });
+    }
+
+    // 5️⃣ Check capacity
     const registrationCount = await Registration.countDocuments({
       event: eventId
     });
@@ -43,28 +55,36 @@ export const registerForEvent = async (req, res, next) => {
         message: "Event capacity reached"
       });
 
-    // Generate secure unique QR identifier
+    // 6️⃣ Generate secure QR identifier
     const qrIdentifier = uuidv4();
 
-    // Create registration
+    // 7️⃣ Create registration
     const registration = await Registration.create({
       user: userId,
       event: eventId,
       qrIdentifier
     });
 
-    // Generate QR image (Base64)
+    // 8️⃣ Generate QR Image (Base64)
     const qrImage = await generateQR(qrIdentifier);
 
-    // Send confirmation email
+    // 9️⃣ Send confirmation email
     const user = await User.findById(userId);
+
     await sendEmail(
       user.email,
       "Event Registration Confirmed",
-      `Hello ${user.name},\n\nYou have successfully registered for ${event.title}.\n\nEvent Date: ${event.date}\nVenue: ${event.venue}`
+      `Hello ${user.name},
+
+You have successfully registered for ${event.title}.
+
+Event Date: ${event.date}
+Venue: ${event.venue}
+
+Please bring your QR code on event day.`
     );
 
-    // Audit log
+    // 🔟 Audit Log
     await AuditLog.create({
       user: userId,
       action: "REGISTER_EVENT",
@@ -79,20 +99,15 @@ export const registerForEvent = async (req, res, next) => {
       registration,
       qrImage
     });
-  } catch (error) {
-    // Duplicate prevention (compound index fallback)
-    if (error.code === 11000) {
-      return res.status(400).json({
-        message: "You have already registered for this event"
-      });
-    }
 
+  } catch (error) {
+    console.error(error);
     next(error);
   }
 };
 
 /**
- * Get my registrations
+ * ================= GET MY REGISTRATIONS =================
  */
 export const myRegistrations = async (req, res, next) => {
   try {
@@ -100,8 +115,22 @@ export const myRegistrations = async (req, res, next) => {
       user: req.user.id
     }).populate("event");
 
-    res.json(registrations);
+    // Attach QR image to each registration
+    const registrationsWithQR = await Promise.all(
+      registrations.map(async (reg) => {
+        const qrImage = await generateQR(reg.qrIdentifier);
+
+        return {
+          ...reg.toObject(),
+          qrImage
+        };
+      })
+    );
+
+    res.json(registrationsWithQR);
+
   } catch (error) {
+    console.error(error);
     next(error);
   }
 };
