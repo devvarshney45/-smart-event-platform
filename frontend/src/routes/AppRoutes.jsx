@@ -1,6 +1,5 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useAppStore } from "../app/store";
-import { Outlet } from "react-router-dom";
 
 import Landing from "../pages/Landing";
 import Login from "../pages/Login";
@@ -11,10 +10,11 @@ import MyEvents from "../pages/MyEvents";
 import Scan from "../pages/Scan";
 import Certificate from "../pages/Certificate";
 import AdminUsers from "../pages/AdminUsers";
+import MyRegistrations from "../pages/MyRegistrations"; // ✅ NEW
 
 import Layout from "../components/layout/Layout";
 
-/* PROTECTED WRAPPER */
+/* ================= PROTECTED WRAPPER ================= */
 function ProtectedRoute({ allowedRoles }) {
   const token = useAppStore((state) => state.token);
   const user = useAppStore((state) => state.user);
@@ -28,7 +28,7 @@ function ProtectedRoute({ allowedRoles }) {
   return <Outlet />;
 }
 
-/* PUBLIC WRAPPER */
+/* ================= PUBLIC WRAPPER ================= */
 function PublicRoute({ children }) {
   const token = useAppStore((state) => state.token);
   return token ? <Navigate to="/dashboard" replace /> : children;
@@ -38,30 +38,39 @@ export default function AppRoutes() {
   return (
     <Routes>
 
-      {/* PUBLIC */}
+      {/* ================= PUBLIC ================= */}
       <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
-      {/* PROTECTED ROOT */}
+      {/* ================= PROTECTED ROOT ================= */}
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
 
           <Route path="/dashboard" element={<Dashboard />} />
 
+          {/* ================= ADMIN ================= */}
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
             <Route path="/dashboard/admin-users" element={<AdminUsers />} />
           </Route>
 
+          {/* ================= ORGANIZER ================= */}
           <Route element={<ProtectedRoute allowedRoles={["organizer"]} />}>
             <Route path="/dashboard/create-event" element={<CreateEvent />} />
             <Route path="/dashboard/my-events" element={<MyEvents />} />
           </Route>
 
+          {/* ================= VOLUNTEER ================= */}
           <Route element={<ProtectedRoute allowedRoles={["volunteer"]} />}>
             <Route path="/dashboard/scan" element={<Scan />} />
           </Route>
 
+          {/* ================= PARTICIPANT ================= */}
+          <Route element={<ProtectedRoute allowedRoles={["participant"]} />}>
+            <Route path="/dashboard/my-registrations" element={<MyRegistrations />} />
+          </Route>
+
+          {/* ================= CERTIFICATE ================= */}
           <Route element={<ProtectedRoute allowedRoles={["participant","admin"]} />}>
             <Route path="/dashboard/certificate/:id" element={<Certificate />} />
           </Route>

@@ -33,6 +33,12 @@ export default function Sidebar() {
       roles: ["organizer"],
     },
     {
+      label: "My Registrations", // ✅ NEW
+      icon: Calendar,
+      path: "/dashboard/my-registrations",
+      roles: ["participant"],
+    },
+    {
       label: "Scan",
       icon: QrCode,
       path: "/dashboard/scan",
@@ -47,7 +53,7 @@ export default function Sidebar() {
       ? "Organizer Panel"
       : role === "volunteer"
       ? "Volunteer Panel"
-      : "Dashboard";
+      : "Participant Panel";
 
   return (
     <div className="flex flex-col h-full pt-6 px-6 pb-6">
