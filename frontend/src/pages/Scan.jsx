@@ -1,25 +1,29 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import api from "../services/axios";
 import toast from "react-hot-toast";
 
 export default function Scan() {
-  const readerRef = useRef(null);
   const scannerRef = useRef(null);
-  const [isStarting, setIsStarting] = useState(false);
+  const readerId = "reader";
 
   useEffect(() => {
-    if (!readerRef.current) return;
-    if (isStarting) return;
-
-    setIsStarting(true);
-
-    const scanner = new Html5Qrcode("reader");
-    scannerRef.current = scanner;
-
     const startScanner = async () => {
       try {
-        // Get available cameras
+        // 🔥 IMPORTANT: clear old instance if exists
+        if (scannerRef.current) {
+          try {
+            await scannerRef.current.stop();
+          } catch {}
+          try {
+            await scannerRef.current.clear();
+          } catch {}
+          scannerRef.current = null;
+        }
+
+        const scanner = new Html5Qrcode(readerId);
+        scannerRef.current = scanner;
+
         const cameras = await Html5Qrcode.getCameras();
 
         if (!cameras || cameras.length === 0) {
@@ -27,17 +31,11 @@ export default function Scan() {
           return;
         }
 
-        // Prefer rear/external camera if exists
-        const rearCamera =
-          cameras.find((cam) =>
-            cam.label.toLowerCase().includes("back")
-          ) || cameras[0];
-
         await scanner.start(
-          rearCamera.id,
+          cameras[0].id,
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 },
+            qrbox: 250,
             aspectRatio: 1.0,
           },
           async (decodedText) => {
@@ -46,37 +44,39 @@ export default function Scan() {
                 qrIdentifier: decodedText,
               });
 
-              toast.success("Attendance Marked Successfully!");
+              toast.success("Attendance Marked!");
 
-              if (scanner.getState() === 2) {
-                await scanner.stop();
-              }
-            } catch (err) {
-              toast.error("Invalid or Already Scanned QR");
+              // stop after successful scan
+              await scanner.stop();
+              await scanner.clear();
+            } catch {
+              toast.error("Invalid QR");
             }
-          },
-          () => {}
+          }
         );
       } catch (err) {
-        console.error("Camera start error:", err);
+        console.error(err);
         toast.error("Camera failed to start");
       }
     };
 
-    // Small delay helps hardware initialize
-    setTimeout(() => {
-      startScanner();
-    }, 500);
+    startScanner();
 
     return () => {
-      if (
-        scannerRef.current &&
-        scannerRef.current.getState() === 2
-      ) {
-        scannerRef.current.stop().catch(() => {});
-      }
+      const cleanup = async () => {
+        if (scannerRef.current) {
+          try {
+            await scannerRef.current.stop();
+          } catch {}
+          try {
+            await scannerRef.current.clear();
+          } catch {}
+          scannerRef.current = null;
+        }
+      };
+      cleanup();
     };
-  }, [isStarting]);
+  }, []);
 
   return (
     <div className="max-w-lg mx-auto mt-10 p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
@@ -85,9 +85,8 @@ export default function Scan() {
       </h2>
 
       <div
-        id="reader"
-        ref={readerRef}
-        className="w-full min-h-[320px] rounded-xl overflow-hidden"
+        id={readerId}
+        className="w-full min-h-[300px] rounded-xl overflow-hidden"
       ></div>
 
       <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-4">
