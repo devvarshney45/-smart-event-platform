@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 dark:bg-darkbg dark:text-white font-sans;
+}
+
+/* Smooth animation for all elements */
+* {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Glass Card Base */
+.glass {
+  @apply bg-white/60 dark:bg-white/5 backdrop-blur-lg border border-white/20;
+}
