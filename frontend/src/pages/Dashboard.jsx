@@ -4,28 +4,39 @@ import Layout from "../components/layout/Layout";
 import Card from "../components/ui/Card";
 import Loader from "../components/ui/Loader";
 import { motion } from "framer-motion";
+import { useAppStore } from "../app/store";
 
 export default function Dashboard() {
-  const [stats, setStats] = useState(null);
+  const user = useAppStore((state) => state.user);
+
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalEvents: 0,
+    totalRegistrations: 0,
+  });
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        const res = await api.get("/admin/stats");
-        setStats(res.data);
-      } catch {
-        setStats({
-          totalUsers: 0,
-          totalEvents: 0,
-          totalRegistrations: 0,
-        });
+        // Admin gets real stats
+        if (user?.role === "admin") {
+          const res = await api.get("/admin/stats");
+          setStats(res.data);
+        }
+        // Non-admin gets default stats
+      } catch (error) {
+        console.log("Stats fetch failed");
+      } finally {
+        setLoading(false);
       }
     }
 
-    fetchStats();
-  }, []);
+    fetchStats(); // always call
+  }, [user]);
 
-  if (!stats) return <Loader />;
+  if (loading) return <Loader />;
 
   return (
     <Layout>

@@ -5,8 +5,11 @@ import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import FadeIn from "../components/animations/FadeIn";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Landing() {
+  const navigate = useNavigate();
+
   return (
     <div className="relative overflow-hidden">
       <Navbar />
@@ -39,8 +42,15 @@ export default function Landing() {
           transition={{ delay: 0.5 }}
           className="mt-8 flex gap-4"
         >
-          <Button>
+          <Button onClick={() => navigate("/login")}>
             Get Started <ArrowRight size={18} className="inline ml-2" />
+          </Button>
+
+          <Button
+            variant="secondary"
+            onClick={() => navigate("/register")}
+          >
+            Create Account
           </Button>
         </motion.div>
       </section>
@@ -86,7 +96,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* FAQ Section */}
       <FAQSection />
 
       {/* CTA Section */}
@@ -95,11 +104,12 @@ export default function Landing() {
           <h2 className="text-4xl font-bold mb-6">
             Ready to simplify your events?
           </h2>
-          <Button>Start Now</Button>
+          <Button onClick={() => navigate("/register")}>
+            Start Now
+          </Button>
         </FadeIn>
       </section>
 
-      {/* Footer */}
       <footer className="py-10 text-center text-slate-500 dark:text-slate-400">
         © 2025 SmartEvent. All rights reserved.
       </footer>
@@ -151,6 +161,7 @@ function FAQSection() {
                 height: active === index ? "auto" : 0,
                 opacity: active === index ? 1 : 0,
               }}
+              transition={{ duration: 0.3 }}
               className="overflow-hidden text-slate-600 dark:text-slate-300 mt-2"
             >
               {faq.answer}
