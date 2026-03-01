@@ -14,6 +14,7 @@ import registrationRoutes from "./routes/registrationRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import certificateRoutes from "./routes/certificateRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 dotenv.config();
 connectDB();
@@ -56,6 +57,7 @@ app.use("/api/registration", registrationRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/certificate", certificateRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/users", userRoutes);
 
 /* ---------------- ERROR HANDLER ---------------- */
 
