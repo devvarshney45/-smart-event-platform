@@ -53,7 +53,7 @@ app.use("/uploads", express.static(path.join("uploads")));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);
-app.use("/api/registration", registrationRoutes);
+app.use("/api/registrations", registrationRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/certificate", certificateRoutes);
 app.use("/api/admin", adminRoutes);
