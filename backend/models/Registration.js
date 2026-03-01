@@ -2,12 +2,30 @@ import mongoose from "mongoose";
 
 const registrationSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    event: { type: mongoose.Schema.Types.ObjectId, ref: "Event" },
-    attended: { type: Boolean, default: false },
-    certificateGenerated: { type: Boolean, default: false },
-    qrIdentifier: { type: String, unique: true },
-    certificateId: { type: String, unique: true, sparse: true }
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
+    event: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Event",
+      required: true
+    },
+    attended: {
+      type: Boolean,
+      default: false
+    },
+    certificateGenerated: {
+      type: Boolean,
+      default: false
+    },
+    certificateId: String,
+    qrIdentifier: {
+      type: String,
+      required: true,
+      unique: true
+    }
   },
   { timestamps: true }
 );
