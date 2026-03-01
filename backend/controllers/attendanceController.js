@@ -1,16 +1,37 @@
 import Registration from "../models/Registration.js";
 
-export const markAttendance = async (req, res) => {
-  const { qrIdentifier } = req.body;
+export const markAttendance = async (req, res, next) => {
+  try {
+    const { qrIdentifier } = req.body;
 
-  const reg = await Registration.findOne({ qrIdentifier });
+    if (!qrIdentifier) {
+      return res.status(400).json({
+        message: "QR identifier missing"
+      });
+    }
 
-  if (!reg) return res.status(404).json({ message: "Invalid QR" });
-  if (reg.attended)
-    return res.status(400).json({ message: "Already marked" });
+    const reg = await Registration.findOne({ qrIdentifier });
 
-  reg.attended = true;
-  await reg.save();
+    if (!reg) {
+      return res.status(404).json({
+        message: "Invalid QR"
+      });
+    }
 
-  res.json({ message: "Attendance marked" });
+    if (reg.attended) {
+      return res.status(400).json({
+        message: "Already marked"
+      });
+    }
+
+    reg.attended = true;
+    await reg.save();
+
+    res.json({
+      message: "Attendance marked successfully"
+    });
+
+  } catch (error) {
+    next(error);
+  }
 };
