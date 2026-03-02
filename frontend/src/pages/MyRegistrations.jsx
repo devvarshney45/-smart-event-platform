@@ -4,11 +4,9 @@ import api from "../services/axios";
 export default function MyRegistrations() {
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState(null);
 
-  useEffect(() => {
-    fetchRegistrations();
-  }, []);
-
+  // ================= FETCH =================
   const fetchRegistrations = async () => {
     try {
       const res = await api.get("/registrations/my");
@@ -20,12 +18,33 @@ export default function MyRegistrations() {
     }
   };
 
-  /* ================= DOWNLOAD CERTIFICATE ================= */
+  useEffect(() => {
+    fetchRegistrations();
+
+    // 🔥 Auto refresh every 5 sec (for instant attendance update)
+    const interval = setInterval(() => {
+      fetchRegistrations();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // ================= DOWNLOAD CERTIFICATE =================
   const handleDownload = async (eventId) => {
     try {
+      setDownloadingId(eventId);
+
       const response = await api.get(`/certificate/${eventId}`, {
-        responseType: "blob", // 🔥 Important
+        responseType: "blob",
       });
+
+      // 🔥 Handle backend JSON error inside blob
+      if (response.headers["content-type"]?.includes("application/json")) {
+        const text = await response.data.text();
+        const json = JSON.parse(text);
+        alert(json.message || "Certificate not available");
+        return;
+      }
 
       const blob = new Blob([response.data], {
         type: "application/pdf",
@@ -43,10 +62,9 @@ export default function MyRegistrations() {
       window.URL.revokeObjectURL(url);
 
     } catch (err) {
-      alert(
-        err.response?.data?.message ||
-        "Certificate not available"
-      );
+      alert("Certificate not available");
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -99,12 +117,17 @@ export default function MyRegistrations() {
 
             {reg.attended && (
               <button
-                onClick={() =>
-                  handleDownload(reg.event._id)
-                }
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition"
+                onClick={() => handleDownload(reg.event._id)}
+                disabled={downloadingId === reg.event._id}
+                className={`px-4 py-2 rounded-lg transition text-white ${
+                  downloadingId === reg.event._id
+                    ? "bg-gray-400"
+                    : "bg-indigo-600 hover:bg-indigo-700"
+                }`}
               >
-                Download Certificate
+                {downloadingId === reg.event._id
+                  ? "Downloading..."
+                  : "Download Certificate"}
               </button>
             )}
           </div>
