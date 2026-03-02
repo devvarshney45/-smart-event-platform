@@ -19,7 +19,6 @@ export default function Scan() {
     };
   }, []);
 
-  /* ================= START SCANNER ================= */
   const startScanner = async () => {
     try {
       const scanner = new Html5Qrcode(readerId);
@@ -30,35 +29,32 @@ export default function Scan() {
         {
           fps: 10,
           qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
+          aspectRatio: 1,
         },
         handleScan
       );
 
       setIsActive(true);
     } catch (err) {
-      console.error("Camera start error:", err);
+      console.error(err);
       toast.error("Camera failed to start");
     }
   };
 
-  /* ================= HANDLE QR SCAN ================= */
   const handleScan = async (decodedText) => {
-    if (isProcessing) return;
+    // 🔥 Hard protection against double scan
+    if (isProcessing || !isActive) return;
 
     setIsProcessing(true);
 
     let finalValue = decodedText;
 
-    // Handle old JSON QR format
     try {
       const parsed = JSON.parse(decodedText);
       if (parsed?.id) {
         finalValue = parsed.id;
       }
-    } catch {
-      // Not JSON, ignore
-    }
+    } catch {}
 
     try {
       const res = await api.post("/attendance", {
@@ -72,7 +68,10 @@ export default function Scan() {
         message: res.data.message,
       });
 
-      await stopScanner();
+      // Small delay so scanner doesn’t fire twice
+      setTimeout(async () => {
+        await stopScanner();
+      }, 300);
 
     } catch (err) {
       const msg =
@@ -89,7 +88,6 @@ export default function Scan() {
     }
   };
 
-  /* ================= STOP SCANNER ================= */
   const stopScanner = async () => {
     if (scannerRef.current) {
       try {
@@ -101,7 +99,6 @@ export default function Scan() {
     setIsActive(false);
   };
 
-  /* ================= RESTART ================= */
   const restartScanner = async () => {
     setLastResult(null);
     setIsProcessing(false);
@@ -115,17 +112,15 @@ export default function Scan() {
         Scan Event QR Code
       </h2>
 
-      {/* Scanner View */}
       <div
         id={readerId}
         className="w-full min-h-[300px] rounded-xl overflow-hidden"
       />
 
-      <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-4">
+      <p className="text-sm text-gray-500 text-center mt-4">
         Point camera at participant QR code
       </p>
 
-      {/* Result Message */}
       {lastResult && (
         <div
           className={`mt-6 text-center font-semibold ${
@@ -138,7 +133,6 @@ export default function Scan() {
         </div>
       )}
 
-      {/* Restart Button */}
       {!isActive && (
         <button
           onClick={restartScanner}

@@ -8,9 +8,8 @@ import Dashboard from "../pages/Dashboard";
 import CreateEvent from "../pages/CreateEvent";
 import MyEvents from "../pages/MyEvents";
 import Scan from "../pages/Scan";
-import Certificate from "../pages/Certificate";
 import AdminUsers from "../pages/AdminUsers";
-import MyRegistrations from "../pages/MyRegistrations"; // ✅ NEW
+import MyRegistrations from "../pages/MyRegistrations";
 
 import Layout from "../components/layout/Layout";
 
@@ -49,30 +48,25 @@ export default function AppRoutes() {
 
           <Route path="/dashboard" element={<Dashboard />} />
 
-          {/* ================= ADMIN ================= */}
+          {/* ADMIN */}
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
             <Route path="/dashboard/admin-users" element={<AdminUsers />} />
           </Route>
 
-          {/* ================= ORGANIZER ================= */}
+          {/* ORGANIZER */}
           <Route element={<ProtectedRoute allowedRoles={["organizer"]} />}>
             <Route path="/dashboard/create-event" element={<CreateEvent />} />
             <Route path="/dashboard/my-events" element={<MyEvents />} />
           </Route>
 
-          {/* ================= VOLUNTEER ================= */}
+          {/* VOLUNTEER */}
           <Route element={<ProtectedRoute allowedRoles={["volunteer"]} />}>
             <Route path="/dashboard/scan" element={<Scan />} />
           </Route>
 
-          {/* ================= PARTICIPANT ================= */}
+          {/* PARTICIPANT */}
           <Route element={<ProtectedRoute allowedRoles={["participant"]} />}>
             <Route path="/dashboard/my-registrations" element={<MyRegistrations />} />
-          </Route>
-
-          {/* ================= CERTIFICATE ================= */}
-          <Route element={<ProtectedRoute allowedRoles={["participant","admin"]} />}>
-            <Route path="/dashboard/certificate/:id" element={<Certificate />} />
           </Route>
 
         </Route>
