@@ -4,27 +4,32 @@ import api from "../services/axios";
 import Card from "../components/ui/Card";
 import Loader from "../components/ui/Loader";
 import Button from "../components/ui/Button";
+import toast from "react-hot-toast";
 
 export default function MyEvents() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    async function fetchMyEvents() {
-      try {
-        const res = await api.get("/events?mine=true");
-        setEvents(res.data || []);
-      } catch (err) {
-        console.log("Error loading events");
-      } finally {
-        setLoading(false);
-      }
+  /* ================= FETCH EVENTS ================= */
+  const fetchMyEvents = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/events?mine=true");
+      setEvents(res.data || []);
+    } catch (err) {
+      console.log("Error loading events:", err);
+      toast.error("Failed to load events");
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchMyEvents();
   }, []);
 
+  /* ================= DELETE EVENT ================= */
   const handleDelete = async (id) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this event?"
@@ -33,16 +38,24 @@ export default function MyEvents() {
 
     try {
       await api.delete(`/events/${id}`);
+
+      // 🔥 Instant UI update (no reload needed)
       setEvents((prev) => prev.filter((e) => e._id !== id));
+
+      toast.success("Event deleted successfully");
+
     } catch (err) {
-      alert("Delete failed");
+      toast.error(
+        err.response?.data?.message || "Delete failed"
+      );
     }
   };
 
   if (loading) return <Loader />;
 
   return (
-    <>
+    <div className="max-w-6xl mx-auto">
+      {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">My Events</h2>
 
@@ -51,6 +64,7 @@ export default function MyEvents() {
         </Button>
       </div>
 
+      {/* NO EVENTS */}
       {events.length === 0 ? (
         <div className="text-gray-500 text-center mt-10 text-lg">
           No events created yet.
@@ -59,14 +73,17 @@ export default function MyEvents() {
         <div className="grid md:grid-cols-2 gap-6">
           {events.map((event) => (
             <Card key={event._id}>
+              {/* TITLE */}
               <h3 className="font-semibold text-lg mb-2">
                 {event.title || "Untitled Event"}
               </h3>
 
+              {/* DESCRIPTION */}
               <p className="text-gray-500 text-sm mb-3">
                 {event.description || "No description available"}
               </p>
 
+              {/* INFO */}
               <div className="text-sm text-gray-400 space-y-1">
                 <p>
                   <span className="font-medium">Date:</span>{" "}
@@ -93,6 +110,7 @@ export default function MyEvents() {
                 </p>
               </div>
 
+              {/* ACTIONS */}
               <div className="flex gap-3 mt-4 flex-wrap">
                 <Button
                   onClick={() =>
@@ -122,6 +140,6 @@ export default function MyEvents() {
           ))}
         </div>
       )}
-    </>
+    </div>
   );
 }
