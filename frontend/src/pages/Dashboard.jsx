@@ -14,22 +14,24 @@ export default function Dashboard() {
   const [events, setEvents] = useState([]);
   const [myRegistrations, setMyRegistrations] = useState([]);
 
+  /* ================= LOAD DATA (FIXED) ================= */
   useEffect(() => {
-    if (!user) return;
-
     const loadData = async () => {
       try {
-        if (user.role === "admin") {
+        const currentUser = useAppStore.getState().user;
+        if (!currentUser) return;
+
+        if (currentUser.role === "admin") {
           const res = await api.get("/admin/stats");
           setAdminStats(res.data);
         }
 
-        if (["organizer", "participant"].includes(user.role)) {
+        if (["organizer", "participant"].includes(currentUser.role)) {
           const res = await api.get("/events");
           setEvents(res.data);
         }
 
-        if (user.role === "participant") {
+        if (currentUser.role === "participant") {
           const res = await api.get("/registrations/my");
           setMyRegistrations(res.data);
         }
@@ -42,20 +44,24 @@ export default function Dashboard() {
     };
 
     loadData();
-  }, [user]);
+  }, []); // 🔥 NO user dependency
 
   if (loading) return <Loader />;
 
   const isRegistered = (eventId) =>
     myRegistrations.some((reg) => reg.event?._id === eventId);
 
+  /* ================= INSTANT REGISTER FIX ================= */
   const handleRegister = async (eventId) => {
     try {
       const res = await api.post(`/registrations/${eventId}`);
       toast.success(res.data.message);
 
-      const updated = await api.get("/registrations/my");
-      setMyRegistrations(updated.data);
+      // 🔥 Optimistic UI update (no reload needed)
+      setMyRegistrations((prev) => [
+        ...prev,
+        { event: { _id: eventId } }
+      ]);
 
     } catch (err) {
       toast.error(
@@ -71,7 +77,7 @@ export default function Dashboard() {
       </h2>
 
       {/* ================= ADMIN ================= */}
-      {user.role === "admin" && adminStats && (
+      {user?.role === "admin" && adminStats && (
         <div className="grid md:grid-cols-3 gap-6">
           <Card>
             <h3 className="text-lg font-semibold">Total Users</h3>
@@ -97,7 +103,7 @@ export default function Dashboard() {
       )}
 
       {/* ================= ORGANIZER ================= */}
-      {user.role === "organizer" && (
+      {user?.role === "organizer" && (
         <>
           <h3 className="text-xl font-semibold mb-4">
             Your Events
@@ -125,7 +131,7 @@ export default function Dashboard() {
       )}
 
       {/* ================= PARTICIPANT ================= */}
-      {user.role === "participant" && (
+      {user?.role === "participant" && (
         <>
           <h3 className="text-xl font-semibold mb-4">
             Available Events
@@ -168,7 +174,7 @@ export default function Dashboard() {
       )}
 
       {/* ================= VOLUNTEER ================= */}
-      {user.role === "volunteer" && (
+      {user?.role === "volunteer" && (
         <Card>
           <h3 className="text-xl font-semibold">
             QR Attendance Scanner
