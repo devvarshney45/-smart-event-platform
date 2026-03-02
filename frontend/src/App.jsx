@@ -6,10 +6,17 @@ import AppRoutes from "./routes/AppRoutes";
 
 export default function App() {
   const theme = useAppStore((state) => state.theme);
+  const initialize = useAppStore((state) => state.initialize);
 
-  // Apply dark mode class to html
+  /* ================= INITIALIZE STORE ================= */
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  /* ================= APPLY THEME ================= */
   useEffect(() => {
     const root = document.documentElement;
+
     if (theme === "dark") {
       root.classList.add("dark");
     } else {
