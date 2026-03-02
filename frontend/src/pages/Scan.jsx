@@ -11,14 +11,17 @@ export default function Scan() {
   const [isActive, setIsActive] = useState(false);
   const [lastResult, setLastResult] = useState(null);
 
+  /* ================= START ON MOUNT ================= */
   useEffect(() => {
     startScanner();
 
     return () => {
       stopScanner();
     };
+    // eslint-disable-next-line
   }, []);
 
+  /* ================= START SCANNER ================= */
   const startScanner = async () => {
     try {
       const scanner = new Html5Qrcode(readerId);
@@ -36,29 +39,33 @@ export default function Scan() {
 
       setIsActive(true);
     } catch (err) {
-      console.error(err);
+      console.error("Camera start error:", err);
       toast.error("Camera failed to start");
     }
   };
 
+  /* ================= HANDLE SCAN ================= */
   const handleScan = async (decodedText) => {
-    // 🔥 Hard protection against double scan
-    if (isProcessing || !isActive) return;
+    // ✅ Only prevent double scan
+    if (isProcessing) return;
 
     setIsProcessing(true);
 
     let finalValue = decodedText;
 
+    // Handle JSON QR
     try {
       const parsed = JSON.parse(decodedText);
       if (parsed?.id) {
         finalValue = parsed.id;
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     try {
       const res = await api.post("/attendance", {
-        qrIdentifier: finalValue,
+        qrIdentifier: finalValue.trim(),
       });
 
       toast.success(res.data.message || "Attendance marked");
@@ -68,10 +75,7 @@ export default function Scan() {
         message: res.data.message,
       });
 
-      // Small delay so scanner doesn’t fire twice
-      setTimeout(async () => {
-        await stopScanner();
-      }, 300);
+      await stopScanner();
 
     } catch (err) {
       const msg =
@@ -88,17 +92,21 @@ export default function Scan() {
     }
   };
 
+  /* ================= STOP SCANNER ================= */
   const stopScanner = async () => {
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
-      } catch {}
+      } catch (err) {
+        console.log("Stop error:", err);
+      }
       scannerRef.current = null;
     }
     setIsActive(false);
   };
 
+  /* ================= RESTART ================= */
   const restartScanner = async () => {
     setLastResult(null);
     setIsProcessing(false);
@@ -106,6 +114,7 @@ export default function Scan() {
     await startScanner();
   };
 
+  /* ================= UI ================= */
   return (
     <div className="max-w-lg mx-auto mt-10 p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
       <h2 className="text-2xl font-bold text-center mb-6">
