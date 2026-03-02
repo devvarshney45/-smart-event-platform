@@ -7,17 +7,16 @@ export default function Layout() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="h-screen w-full flex flex-col bg-slate-100 dark:bg-slate-900">
+    <div className="h-screen flex flex-col bg-slate-100 dark:bg-slate-900">
 
-      {/* ================= NAVBAR ================= */}
-      <header className="h-16 w-full shrink-0 border-b border-slate-200 dark:border-slate-700">
+      {/* NAVBAR */}
+      <header className="h-16 border-b border-slate-200 dark:border-slate-700">
         <Navbar toggleSidebar={() => setIsOpen(!isOpen)} />
       </header>
 
-      {/* ================= MAIN BODY ================= */}
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden">
 
-        {/* ===== MOBILE OVERLAY ===== */}
+        {/* Overlay for mobile */}
         {isOpen && (
           <div
             className="fixed inset-0 bg-black/40 z-40 md:hidden"
@@ -25,28 +24,26 @@ export default function Layout() {
           />
         )}
 
-        {/* ===== SIDEBAR ===== */}
+        {/* Sidebar */}
         <aside
           className={`
             fixed md:static
             top-16 md:top-0
             left-0
-            h-[calc(100vh-4rem)] md:h-auto
             w-64
+            h-[calc(100vh-4rem)] md:h-auto
             bg-white dark:bg-slate-800
             border-r border-slate-200 dark:border-slate-700
-            overflow-y-auto
-            z-50
-            transform transition-transform duration-300
+            transform transition-transform duration-300 z-50
             ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
           `}
         >
           <Sidebar closeSidebar={() => setIsOpen(false)} />
         </aside>
 
-        {/* ===== PAGE CONTENT ===== */}
-        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
-          <div className="max-w-7xl mx-auto w-full">
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>
         </main>

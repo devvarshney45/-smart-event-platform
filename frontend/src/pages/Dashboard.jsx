@@ -4,6 +4,7 @@ import Card from "../components/ui/Card";
 import Loader from "../components/ui/Loader";
 import FadeIn from "../components/animations/FadeIn";
 import { useAppStore } from "../app/store";
+import toast from "react-hot-toast";
 
 export default function Dashboard() {
   const user = useAppStore((state) => state.user);
@@ -14,22 +15,21 @@ export default function Dashboard() {
   const [myRegistrations, setMyRegistrations] = useState([]);
 
   useEffect(() => {
-    async function loadData() {
+    if (!user) return;
+
+    const loadData = async () => {
       try {
-        if (user?.role === "admin") {
+        if (user.role === "admin") {
           const res = await api.get("/admin/stats");
           setAdminStats(res.data);
         }
 
-        if (
-          user?.role === "organizer" ||
-          user?.role === "participant"
-        ) {
+        if (["organizer", "participant"].includes(user.role)) {
           const res = await api.get("/events");
           setEvents(res.data);
         }
 
-        if (user?.role === "participant") {
+        if (user.role === "participant") {
           const res = await api.get("/registrations/my");
           setMyRegistrations(res.data);
         }
@@ -39,17 +39,29 @@ export default function Dashboard() {
       } finally {
         setLoading(false);
       }
-    }
+    };
 
     loadData();
   }, [user]);
 
   if (loading) return <Loader />;
 
-  const isRegistered = (eventId) => {
-    return myRegistrations.some(
-      (reg) => reg.event._id === eventId
-    );
+  const isRegistered = (eventId) =>
+    myRegistrations.some((reg) => reg.event?._id === eventId);
+
+  const handleRegister = async (eventId) => {
+    try {
+      const res = await api.post(`/registrations/${eventId}`);
+      toast.success(res.data.message);
+
+      const updated = await api.get("/registrations/my");
+      setMyRegistrations(updated.data);
+
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || "Registration failed"
+      );
+    }
   };
 
   return (
@@ -59,7 +71,7 @@ export default function Dashboard() {
       </h2>
 
       {/* ================= ADMIN ================= */}
-      {user?.role === "admin" && adminStats && (
+      {user.role === "admin" && adminStats && (
         <div className="grid md:grid-cols-3 gap-6">
           <Card>
             <h3 className="text-lg font-semibold">Total Users</h3>
@@ -85,14 +97,14 @@ export default function Dashboard() {
       )}
 
       {/* ================= ORGANIZER ================= */}
-      {user?.role === "organizer" && (
+      {user.role === "organizer" && (
         <>
           <h3 className="text-xl font-semibold mb-4">
             Your Events
           </h3>
 
           <div className="grid md:grid-cols-2 gap-6">
-            {events.length > 0 ? (
+            {events.length ? (
               events.map((event) => (
                 <Card key={event._id}>
                   <h4 className="font-semibold text-lg">
@@ -113,14 +125,14 @@ export default function Dashboard() {
       )}
 
       {/* ================= PARTICIPANT ================= */}
-      {user?.role === "participant" && (
+      {user.role === "participant" && (
         <>
           <h3 className="text-xl font-semibold mb-4">
             Available Events
           </h3>
 
           <div className="grid md:grid-cols-2 gap-6">
-            {events.length > 0 ? (
+            {events.length ? (
               events.map((event) => (
                 <Card key={event._id}>
                   <h4 className="font-semibold text-lg">
@@ -133,26 +145,7 @@ export default function Dashboard() {
 
                   <button
                     disabled={isRegistered(event._id)}
-                    onClick={async () => {
-                      try {
-                        const res = await api.post(
-                          `/registrations/${event._id}`
-                        );
-
-                        alert(res.data.message);
-
-                        // refresh registrations after success
-                        const updated =
-                          await api.get("/registrations/my");
-                        setMyRegistrations(updated.data);
-
-                      } catch (err) {
-                        alert(
-                          err.response?.data?.message ||
-                          "Registration failed"
-                        );
-                      }
-                    }}
+                    onClick={() => handleRegister(event._id)}
                     className={`mt-4 px-4 py-2 rounded-lg transition ${
                       isRegistered(event._id)
                         ? "bg-gray-400 cursor-not-allowed text-white"
@@ -175,7 +168,7 @@ export default function Dashboard() {
       )}
 
       {/* ================= VOLUNTEER ================= */}
-      {user?.role === "volunteer" && (
+      {user.role === "volunteer" && (
         <Card>
           <h3 className="text-xl font-semibold">
             QR Attendance Scanner
