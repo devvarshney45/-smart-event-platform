@@ -1,4 +1,5 @@
 import Registration from "../models/Registration.js";
+import { v4 as uuidv4 } from "uuid";
 
 export const markAttendance = async (req, res, next) => {
   try {
@@ -10,26 +11,8 @@ export const markAttendance = async (req, res, next) => {
       });
     }
 
-    let extractedId;
-
-    // 🔥 Handle both JSON QR and plain UUID QR
-    try {
-      const parsed = JSON.parse(qrIdentifier);
-
-      // If QR contains: {"id":"uuid"}
-      if (parsed && parsed.id) {
-        extractedId = parsed.id;
-      } else {
-        extractedId = qrIdentifier;
-      }
-
-    } catch {
-      // If not JSON, assume plain UUID
-      extractedId = qrIdentifier;
-    }
-
     const reg = await Registration.findOne({
-      qrIdentifier: extractedId
+      qrIdentifier
     });
 
     if (!reg) {
@@ -40,15 +23,22 @@ export const markAttendance = async (req, res, next) => {
 
     if (reg.attended) {
       return res.status(400).json({
-        message: "Already marked"
+        message: "Attendance already marked"
       });
     }
 
+    // ✅ Mark attended
     reg.attended = true;
+
+    // ✅ Generate certificate ID immediately
+    reg.certificateGenerated = true;
+    reg.certificateId = uuidv4();
+
     await reg.save();
 
     return res.status(200).json({
-      message: "Attendance marked successfully"
+      message: "Attendance marked successfully",
+      certificateReady: true
     });
 
   } catch (error) {
