@@ -11,8 +11,11 @@ export const markAttendance = async (req, res, next) => {
       });
     }
 
+    // ✅ Trim for safety
+    const cleanQR = qrIdentifier.trim();
+
     const reg = await Registration.findOne({
-      qrIdentifier
+      qrIdentifier: cleanQR
     });
 
     if (!reg) {
@@ -21,23 +24,30 @@ export const markAttendance = async (req, res, next) => {
       });
     }
 
+    // ✅ If already attended → return success (NO ERROR)
     if (reg.attended) {
-      return res.status(400).json({
-        message: "Attendance already marked"
+      return res.status(200).json({
+        message: "Attendance already marked",
+        alreadyMarked: true,
+        certificateReady: true
       });
     }
 
-    // ✅ Mark attended
+    // ✅ Mark attendance
     reg.attended = true;
 
-    // ✅ Generate certificate ID immediately
+    // ✅ Generate certificateId only if not exists
+    if (!reg.certificateId) {
+      reg.certificateId = uuidv4();
+    }
+
     reg.certificateGenerated = true;
-    reg.certificateId = uuidv4();
 
     await reg.save();
 
     return res.status(200).json({
       message: "Attendance marked successfully",
+      alreadyMarked: false,
       certificateReady: true
     });
 

@@ -16,24 +16,20 @@ export const registerForEvent = async (req, res, next) => {
     const { eventId } = req.params;
     const userId = req.user.id;
 
-    // 1️⃣ Check event exists
     const event = await Event.findById(eventId);
     if (!event)
       return res.status(404).json({ message: "Event not found" });
 
-    // 2️⃣ Check suspended
     if (event.isSuspended)
       return res.status(403).json({
         message: "This event has been suspended by admin"
       });
 
-    // 3️⃣ Check deadline
     if (new Date() > new Date(event.deadline))
       return res.status(400).json({
         message: "Registration deadline has passed"
       });
 
-    // 4️⃣ Check duplicate registration manually (extra safety)
     const existingRegistration = await Registration.findOne({
       user: userId,
       event: eventId
@@ -45,7 +41,6 @@ export const registerForEvent = async (req, res, next) => {
       });
     }
 
-    // 5️⃣ Check capacity
     const registrationCount = await Registration.countDocuments({
       event: eventId
     });
@@ -55,20 +50,16 @@ export const registerForEvent = async (req, res, next) => {
         message: "Event capacity reached"
       });
 
-    // 6️⃣ Generate secure QR identifier
     const qrIdentifier = uuidv4();
 
-    // 7️⃣ Create registration
     const registration = await Registration.create({
       user: userId,
       event: eventId,
       qrIdentifier
     });
 
-    // 8️⃣ Generate QR Image (Base64)
     const qrImage = await generateQR(qrIdentifier);
 
-    // 9️⃣ Send confirmation email
     const user = await User.findById(userId);
 
     await sendEmail(
@@ -84,7 +75,6 @@ Venue: ${event.venue}
 Please bring your QR code on event day.`
     );
 
-    // 🔟 Audit Log
     await AuditLog.create({
       user: userId,
       action: "REGISTER_EVENT",
@@ -111,17 +101,20 @@ Please bring your QR code on event day.`
  */
 export const myRegistrations = async (req, res, next) => {
   try {
+    // ✅ Use lean() for fresh plain objects
     const registrations = await Registration.find({
       user: req.user.id
-    }).populate("event");
+    })
+      .populate("event")
+      .lean();
 
-    // Attach QR image to each registration
+    // ✅ Attach QR image safely
     const registrationsWithQR = await Promise.all(
       registrations.map(async (reg) => {
         const qrImage = await generateQR(reg.qrIdentifier);
 
         return {
-          ...reg.toObject(),
+          ...reg,
           qrImage
         };
       })
