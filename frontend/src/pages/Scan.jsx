@@ -7,8 +7,9 @@ export default function Scan() {
   const scannerRef = useRef(null);
   const readerId = "reader";
 
-  const [scanning, setScanning] = useState(false);
-  const [active, setActive] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isActive, setIsActive] = useState(false);
+  const [lastResult, setLastResult] = useState(null);
 
   useEffect(() => {
     startScanner();
@@ -18,10 +19,9 @@ export default function Scan() {
     };
   }, []);
 
+  /* ================= START SCANNER ================= */
   const startScanner = async () => {
     try {
-      setScanning(false);
-
       const scanner = new Html5Qrcode(readerId);
       scannerRef.current = scanner;
 
@@ -32,54 +32,64 @@ export default function Scan() {
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
         },
-        async (decodedText) => {
-          if (scanning) return;
-
-          setScanning(true);
-
-          console.log("RAW QR:", decodedText);
-
-          // 🔥 Handle JSON QR and plain UUID
-          let finalValue = decodedText;
-
-          try {
-            const parsed = JSON.parse(decodedText);
-            if (parsed.id) {
-              finalValue = parsed.id;
-            }
-          } catch {
-            // ignore if not JSON
-          }
-
-          console.log("Final QR Value:", finalValue);
-
-          try {
-            const res = await api.post("/attendance", {
-              qrIdentifier: finalValue,
-            });
-
-            toast.success(res.data.message || "Attendance Marked");
-
-            await stopScanner();
-          } catch (err) {
-            console.log("Attendance error:", err.response?.data);
-
-            toast.error(
-              err.response?.data?.message || "Attendance failed"
-            );
-
-            setScanning(false);
-          }
-        }
+        handleScan
       );
 
-      setActive(true);
+      setIsActive(true);
     } catch (err) {
       console.error("Camera start error:", err);
       toast.error("Camera failed to start");
     }
   };
 
+  /* ================= HANDLE QR SCAN ================= */
+  const handleScan = async (decodedText) => {
+    if (isProcessing) return;
+
+    setIsProcessing(true);
+
+    let finalValue = decodedText;
+
+    // Handle old JSON QR format
+    try {
+      const parsed = JSON.parse(decodedText);
+      if (parsed?.id) {
+        finalValue = parsed.id;
+      }
+    } catch {
+      // Not JSON, ignore
+    }
+
+    try {
+      const res = await api.post("/attendance", {
+        qrIdentifier: finalValue,
+      });
+
+      toast.success(res.data.message || "Attendance marked");
+
+      setLastResult({
+        success: true,
+        message: res.data.message,
+      });
+
+      await stopScanner();
+
+    } catch (err) {
+      const msg =
+        err.response?.data?.message || "Attendance failed";
+
+      toast.error(msg);
+
+      setLastResult({
+        success: false,
+        message: msg,
+      });
+
+      setIsProcessing(false);
+    }
+  };
+
+  /* ================= STOP SCANNER ================= */
   const stopScanner = async () => {
     if (scannerRef.current) {
       try {
@@ -88,10 +98,13 @@ export default function Scan() {
       } catch {}
       scannerRef.current = null;
     }
-    setActive(false);
+    setIsActive(false);
   };
 
+  /* ================= RESTART ================= */
   const restartScanner = async () => {
+    setLastResult(null);
+    setIsProcessing(false);
     await stopScanner();
     await startScanner();
   };
@@ -102,6 +115,7 @@ export default function Scan() {
         Scan Event QR Code
       </h2>
 
+      {/* Scanner View */}
       <div
         id={readerId}
         className="w-full min-h-[300px] rounded-xl overflow-hidden"
@@ -111,12 +125,26 @@ export default function Scan() {
         Point camera at participant QR code
       </p>
 
-      {!active && (
+      {/* Result Message */}
+      {lastResult && (
+        <div
+          className={`mt-6 text-center font-semibold ${
+            lastResult.success
+              ? "text-green-600"
+              : "text-red-500"
+          }`}
+        >
+          {lastResult.message}
+        </div>
+      )}
+
+      {/* Restart Button */}
+      {!isActive && (
         <button
           onClick={restartScanner}
           className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition"
         >
-          Restart Scanner
+          Scan Next Participant
         </button>
       )}
     </div>
