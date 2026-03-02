@@ -1,10 +1,8 @@
-import fs from "fs";
-import path from "path";
+import PDFDocument from "pdfkit";
 import Registration from "../models/Registration.js";
 import Event from "../models/Event.js";
 import User from "../models/User.js";
 import { v4 as uuidv4 } from "uuid";
-import { generateCertificate } from "../utils/generateCertificate.js";
 
 export const downloadCertificate = async (req, res) => {
   try {
@@ -15,14 +13,13 @@ export const downloadCertificate = async (req, res) => {
       event: eventId
     });
 
-    if (!reg)
+    if (!reg) {
       return res.status(404).json({ message: "Not registered" });
+    }
 
-    if (!reg.attended)
-      return res.status(400).json({ message: "Not attended" });
-
-    const event = await Event.findById(eventId);
-    const user = await User.findById(req.user.id);
+    if (!reg.attended) {
+      return res.status(400).json({ message: "Not attended yet" });
+    }
 
     // ✅ Ensure certificate ID exists
     if (!reg.certificateId) {
@@ -31,29 +28,51 @@ export const downloadCertificate = async (req, res) => {
       await reg.save();
     }
 
-    const certificatesDir = path.join(process.cwd(), "certificates");
+    const event = await Event.findById(eventId);
+    const user = await User.findById(req.user.id);
 
-    // ✅ Ensure folder exists (IMPORTANT for Render)
-    if (!fs.existsSync(certificatesDir)) {
-      fs.mkdirSync(certificatesDir);
-    }
+    // ✅ Create PDF in memory
+    const doc = new PDFDocument({ size: "A4" });
 
-    const filePath = path.join(
-      certificatesDir,
-      `${reg.certificateId}.pdf`
+    // Set response headers
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=certificate-${reg.certificateId}.pdf`
     );
 
-    // ✅ If file doesn't exist, generate it
-    if (!fs.existsSync(filePath)) {
-      await generateCertificate(user, event, reg.certificateId);
-    }
+    // Pipe PDF directly to response
+    doc.pipe(res);
 
-    return res.download(filePath);
+    // ===== Certificate Design =====
+    doc.moveDown(4);
+    doc.fontSize(26).text("Certificate of Participation", {
+      align: "center",
+    });
+
+    doc.moveDown(2);
+    doc.fontSize(20).text(user.name, {
+      align: "center",
+    });
+
+    doc.moveDown(1);
+    doc.fontSize(16).text(
+      `has successfully attended "${event.title}"`,
+      { align: "center" }
+    );
+
+    doc.moveDown(2);
+    doc.fontSize(12).text(
+      `Certificate ID: ${reg.certificateId}`,
+      { align: "center" }
+    );
+
+    doc.end();
 
   } catch (error) {
     console.error(error);
     return res.status(500).json({
-      message: "Certificate generation failed"
+      message: "Certificate generation failed",
     });
   }
 };
