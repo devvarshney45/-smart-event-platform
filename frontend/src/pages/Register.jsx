@@ -4,9 +4,11 @@ import api from "../services/axios";
 import Input from "../components/ui/Input";
 import Button from "../components/ui/Button";
 import FadeIn from "../components/animations/FadeIn";
+import { useAppStore } from "../app/store";
 
 export default function Register() {
   const navigate = useNavigate();
+  const { setUser, setToken } = useAppStore();
 
   const [form, setForm] = useState({
     name: "",
@@ -18,8 +20,15 @@ export default function Register() {
     e.preventDefault();
 
     try {
-      await api.post("/auth/register", form);
-      navigate("/login");
+      const res = await api.post("/auth/register", form);
+
+      // ✅ Save auth state immediately
+      setUser(res.data.user);
+      setToken(res.data.token);
+
+      // ✅ Go directly to dashboard
+      navigate("/dashboard");
+
     } catch (err) {
       alert(err.response?.data?.message || "Registration failed");
     }
