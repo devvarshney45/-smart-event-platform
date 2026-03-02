@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/axios";
-import Layout from "../components/layout/Layout";
 import Card from "../components/ui/Card";
 import Loader from "../components/ui/Loader";
 import Button from "../components/ui/Button";
@@ -43,11 +42,11 @@ export default function MyEvents() {
   if (loading) return <Loader />;
 
   return (
-    <Layout>
+    <>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">My Events</h2>
 
-        <Button onClick={() => navigate("/create-event")}>
+        <Button onClick={() => navigate("/dashboard/create-event")}>
           + Create Event
         </Button>
       </div>
@@ -60,17 +59,14 @@ export default function MyEvents() {
         <div className="grid md:grid-cols-2 gap-6">
           {events.map((event) => (
             <Card key={event._id}>
-              {/* Title */}
               <h3 className="font-semibold text-lg mb-2">
                 {event.title || "Untitled Event"}
               </h3>
 
-              {/* Description */}
               <p className="text-gray-500 text-sm mb-3">
                 {event.description || "No description available"}
               </p>
 
-              {/* Safe Info Section */}
               <div className="text-sm text-gray-400 space-y-1">
                 <p>
                   <span className="font-medium">Date:</span>{" "}
@@ -97,11 +93,10 @@ export default function MyEvents() {
                 </p>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex gap-3 mt-4 flex-wrap">
                 <Button
                   onClick={() =>
-                    navigate(`/edit-event/${event._id}`)
+                    navigate(`/dashboard/edit-event/${event._id}`)
                   }
                 >
                   Edit
@@ -109,7 +104,7 @@ export default function MyEvents() {
 
                 <Button
                   onClick={() =>
-                    navigate(`/event/${event._id}/registrations`)
+                    navigate(`/dashboard/event/${event._id}/registrations`)
                   }
                   className="bg-green-600"
                 >
@@ -127,6 +122,6 @@ export default function MyEvents() {
           ))}
         </div>
       )}
-    </Layout>
+    </>
   );
 }
