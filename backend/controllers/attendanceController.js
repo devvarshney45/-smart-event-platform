@@ -10,7 +10,27 @@ export const markAttendance = async (req, res, next) => {
       });
     }
 
-    const reg = await Registration.findOne({ qrIdentifier });
+    let extractedId;
+
+    // 🔥 Handle both JSON QR and plain UUID QR
+    try {
+      const parsed = JSON.parse(qrIdentifier);
+
+      // If QR contains: {"id":"uuid"}
+      if (parsed && parsed.id) {
+        extractedId = parsed.id;
+      } else {
+        extractedId = qrIdentifier;
+      }
+
+    } catch {
+      // If not JSON, assume plain UUID
+      extractedId = qrIdentifier;
+    }
+
+    const reg = await Registration.findOne({
+      qrIdentifier: extractedId
+    });
 
     if (!reg) {
       return res.status(404).json({
@@ -27,7 +47,7 @@ export const markAttendance = async (req, res, next) => {
     reg.attended = true;
     await reg.save();
 
-    res.json({
+    return res.status(200).json({
       message: "Attendance marked successfully"
     });
 
