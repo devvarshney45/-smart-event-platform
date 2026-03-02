@@ -1,17 +1,14 @@
 import QRCode from "qrcode";
 
 /**
- * Generates a secure QR code string (Base64 Image)
+ * Generates QR code as Base64 image
  * @param {string} qrIdentifier - Unique UUID stored in DB
  * @returns {string} Base64 QR image
  */
 export const generateQR = async (qrIdentifier) => {
   try {
-    const qrData = JSON.stringify({
-      id: qrIdentifier
-    });
-
-    const qrImage = await QRCode.toDataURL(qrData, {
+    // ✅ Store plain UUID (NOT JSON)
+    const qrImage = await QRCode.toDataURL(qrIdentifier, {
       errorCorrectionLevel: "H",
       type: "image/png",
       margin: 2,
@@ -19,7 +16,9 @@ export const generateQR = async (qrIdentifier) => {
     });
 
     return qrImage;
+
   } catch (error) {
+    console.error("QR generation error:", error);
     throw new Error("QR generation failed");
   }
 };
