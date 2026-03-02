@@ -14,24 +14,25 @@ export default function Dashboard() {
   const [events, setEvents] = useState([]);
   const [myRegistrations, setMyRegistrations] = useState([]);
 
-  /* ================= LOAD DATA (FIXED) ================= */
+  /* ================= LOAD DATA (CORRECT) ================= */
   useEffect(() => {
+    if (!user) return;
+
     const loadData = async () => {
       try {
-        const currentUser = useAppStore.getState().user;
-        if (!currentUser) return;
+        setLoading(true);
 
-        if (currentUser.role === "admin") {
+        if (user.role === "admin") {
           const res = await api.get("/admin/stats");
           setAdminStats(res.data);
         }
 
-        if (["organizer", "participant"].includes(currentUser.role)) {
+        if (["organizer", "participant"].includes(user.role)) {
           const res = await api.get("/events");
           setEvents(res.data);
         }
 
-        if (currentUser.role === "participant") {
+        if (user.role === "participant") {
           const res = await api.get("/registrations/my");
           setMyRegistrations(res.data);
         }
@@ -44,20 +45,20 @@ export default function Dashboard() {
     };
 
     loadData();
-  }, []); // 🔥 NO user dependency
+  }, [user]); // ✅ dependency added back
 
-  if (loading) return <Loader />;
+  if (!user || loading) return <Loader />;
 
   const isRegistered = (eventId) =>
     myRegistrations.some((reg) => reg.event?._id === eventId);
 
-  /* ================= INSTANT REGISTER FIX ================= */
+  /* ================= INSTANT REGISTER ================= */
   const handleRegister = async (eventId) => {
     try {
       const res = await api.post(`/registrations/${eventId}`);
       toast.success(res.data.message);
 
-      // 🔥 Optimistic UI update (no reload needed)
+      // Optimistic UI update
       setMyRegistrations((prev) => [
         ...prev,
         { event: { _id: eventId } }
@@ -77,24 +78,24 @@ export default function Dashboard() {
       </h2>
 
       {/* ================= ADMIN ================= */}
-      {user?.role === "admin" && adminStats && (
+      {user.role === "admin" && adminStats && (
         <div className="grid md:grid-cols-3 gap-6">
           <Card>
-            <h3 className="text-lg font-semibold">Total Users</h3>
+            <h3>Total Users</h3>
             <p className="text-3xl font-bold text-indigo-600 mt-2">
               {adminStats.totalUsers}
             </p>
           </Card>
 
           <Card>
-            <h3 className="text-lg font-semibold">Total Events</h3>
+            <h3>Total Events</h3>
             <p className="text-3xl font-bold text-indigo-600 mt-2">
               {adminStats.totalEvents}
             </p>
           </Card>
 
           <Card>
-            <h3 className="text-lg font-semibold">Registrations</h3>
+            <h3>Registrations</h3>
             <p className="text-3xl font-bold text-indigo-600 mt-2">
               {adminStats.totalRegistrations}
             </p>
@@ -102,79 +103,67 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ================= ORGANIZER ================= */}
-      {user?.role === "organizer" && (
-        <>
-          <h3 className="text-xl font-semibold mb-4">
-            Your Events
-          </h3>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {events.length ? (
-              events.map((event) => (
-                <Card key={event._id}>
-                  <h4 className="font-semibold text-lg">
-                    {event.title}
-                  </h4>
-                  <p className="text-sm text-slate-500">
-                    {event.description}
-                  </p>
-                </Card>
-              ))
-            ) : (
-              <p className="text-slate-500">
-                No events found.
-              </p>
-            )}
-          </div>
-        </>
-      )}
-
       {/* ================= PARTICIPANT ================= */}
-      {user?.role === "participant" && (
+      {user.role === "participant" && (
         <>
           <h3 className="text-xl font-semibold mb-4">
             Available Events
           </h3>
 
           <div className="grid md:grid-cols-2 gap-6">
-            {events.length ? (
-              events.map((event) => (
-                <Card key={event._id}>
-                  <h4 className="font-semibold text-lg">
-                    {event.title}
-                  </h4>
+            {events.map((event) => (
+              <Card key={event._id}>
+                <h4 className="font-semibold text-lg">
+                  {event.title}
+                </h4>
 
-                  <p className="text-sm text-slate-500">
-                    {event.description}
-                  </p>
+                <p className="text-sm text-slate-500">
+                  {event.description}
+                </p>
 
-                  <button
-                    disabled={isRegistered(event._id)}
-                    onClick={() => handleRegister(event._id)}
-                    className={`mt-4 px-4 py-2 rounded-lg transition ${
-                      isRegistered(event._id)
-                        ? "bg-gray-400 cursor-not-allowed text-white"
-                        : "bg-indigo-600 hover:bg-indigo-700 text-white"
-                    }`}
-                  >
-                    {isRegistered(event._id)
-                      ? "Already Registered"
-                      : "Register"}
-                  </button>
-                </Card>
-              ))
-            ) : (
-              <p className="text-slate-500">
-                No events available.
-              </p>
-            )}
+                <button
+                  disabled={isRegistered(event._id)}
+                  onClick={() => handleRegister(event._id)}
+                  className={`mt-4 px-4 py-2 rounded-lg transition ${
+                    isRegistered(event._id)
+                      ? "bg-gray-400 cursor-not-allowed text-white"
+                      : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                  }`}
+                >
+                  {isRegistered(event._id)
+                    ? "Already Registered"
+                    : "Register"}
+                </button>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ================= ORGANIZER ================= */}
+      {user.role === "organizer" && (
+        <>
+          <h3 className="text-xl font-semibold mb-4">
+            Your Events
+          </h3>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {events.map((event) => (
+              <Card key={event._id}>
+                <h4 className="font-semibold text-lg">
+                  {event.title}
+                </h4>
+                <p className="text-sm text-slate-500">
+                  {event.description}
+                </p>
+              </Card>
+            ))}
           </div>
         </>
       )}
 
       {/* ================= VOLUNTEER ================= */}
-      {user?.role === "volunteer" && (
+      {user.role === "volunteer" && (
         <Card>
           <h3 className="text-xl font-semibold">
             QR Attendance Scanner
@@ -186,4 +175,4 @@ export default function Dashboard() {
       )}
     </FadeIn>
   );
-}
+            }
