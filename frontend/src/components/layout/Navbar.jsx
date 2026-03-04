@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 export default function Navbar({ toggleSidebar }) {
-  const { toggleTheme, theme, logout } = useAppStore();
+
+  const { toggleTheme, theme, logout, token } = useAppStore();
   const navigate = useNavigate();
 
   return (
@@ -20,16 +21,18 @@ export default function Navbar({ toggleSidebar }) {
         <div className="flex items-center gap-3">
 
           {/* Mobile Hamburger */}
-          <button
-            onClick={toggleSidebar}
-            className="md:hidden p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <Menu size={20} />
-          </button>
+          {token && (
+            <button
+              onClick={toggleSidebar}
+              className="md:hidden p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <Menu size={20} />
+            </button>
+          )}
 
           {/* Logo */}
           <div
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate(token ? "/dashboard" : "/")}
             className="text-lg md:text-xl font-bold cursor-pointer text-indigo-600"
           >
             SmartEvent
@@ -48,17 +51,19 @@ export default function Navbar({ toggleSidebar }) {
             {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
           </button>
 
-          {/* Logout */}
-          <button
-            onClick={() => {
-              logout();
-              navigate("/login");
-            }}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 transition"
-          >
-            <LogOut size={16} />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
+          {/* Logout (only when logged in) */}
+          {token && (
+            <button
+              onClick={() => {
+                logout();
+                navigate("/login");
+              }}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 transition"
+            >
+              <LogOut size={16} />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          )}
 
         </div>
 
