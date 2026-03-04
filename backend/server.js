@@ -8,6 +8,9 @@ import path from "path";
 import connectDB from "./config/db.js";
 import { errorHandler } from "./middleware/errorMiddleware.js";
 
+/* ⭐ NEW */
+import { startEventReminder } from "./utils/eventReminder.js";
+
 import authRoutes from "./routes/authRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
 import registrationRoutes from "./routes/registrationRoutes.js";
@@ -21,6 +24,7 @@ connectDB();
 
 const app = express();
 app.set("trust proxy", 1);
+
 /* ---------------- SECURITY MIDDLEWARE ---------------- */
 
 app.disable("x-powered-by");
@@ -62,6 +66,10 @@ app.use("/api/users", userRoutes);
 /* ---------------- ERROR HANDLER ---------------- */
 
 app.use(errorHandler);
+
+/* ---------------- START CRON JOB ---------------- */
+
+startEventReminder();
 
 /* ---------------- SERVER START ---------------- */
 

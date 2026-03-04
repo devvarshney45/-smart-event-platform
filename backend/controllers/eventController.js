@@ -3,10 +3,11 @@ import Registration from "../models/Registration.js";
 import AuditLog from "../models/AuditLog.js";
 
 /**
- * Organizer: Create Event (with banner upload optional)
+ * ================= CREATE EVENT =================
  */
 export const createEvent = async (req, res, next) => {
   try {
+
     const {
       title,
       description,
@@ -16,10 +17,17 @@ export const createEvent = async (req, res, next) => {
       deadline
     } = req.body;
 
-    if (new Date(deadline) >= new Date(date))
+    if (new Date(deadline) >= new Date(date)) {
       return res.status(400).json({
         message: "Registration deadline must be before event date"
       });
+    }
+
+    if (capacity <= 0) {
+      return res.status(400).json({
+        message: "Capacity must be greater than 0"
+      });
+    }
 
     const event = await Event.create({
       title,
@@ -39,39 +47,132 @@ export const createEvent = async (req, res, next) => {
     });
 
     res.status(201).json(event);
+
   } catch (error) {
     next(error);
   }
 };
 
+
 /**
- * Get All Events (Public view)
+ * ================= GET EVENTS =================
  */
 export const getEvents = async (req, res, next) => {
   try {
-    const events = await Event.find().populate("organizer", "name email");
-    res.json(events);
+
+    const query = {};
+
+    if (req.query.mine === "true") {
+      query.organizer = req.user.id;
+    }
+
+    const events = await Event
+      .find(query)
+      .populate("organizer", "name email")
+      .lean();
+
+    const eventIds = events.map(e => e._id);
+
+    const stats = await Registration.aggregate([
+      { $match: { event: { $in: eventIds } } },
+      {
+        $group: {
+          _id: "$event",
+          totalRegistrations: { $sum: 1 },
+          attendedCount: {
+            $sum: { $cond: ["$attended", 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    const statsMap = {};
+
+    stats.forEach(s => {
+
+      const percentage =
+        s.totalRegistrations === 0
+          ? 0
+          : Math.round(
+              (s.attendedCount /
+                s.totalRegistrations) * 100
+            );
+
+      statsMap[s._id] = {
+        totalRegistrations: s.totalRegistrations,
+        attendedCount: s.attendedCount,
+        attendancePercentage: percentage
+      };
+
+    });
+
+    const finalEvents = events.map(event => ({
+      ...event,
+      totalRegistrations:
+        statsMap[event._id]?.totalRegistrations || 0,
+      attendedCount:
+        statsMap[event._id]?.attendedCount || 0,
+      attendancePercentage:
+        statsMap[event._id]?.attendancePercentage || 0
+    }));
+
+    res.json(finalEvents);
+
   } catch (error) {
     next(error);
   }
 };
 
+
 /**
- * Organizer: Update Own Event
+ * ================= UPDATE EVENT =================
  */
 export const updateEvent = async (req, res, next) => {
   try {
+
     const event = await Event.findById(req.params.id);
 
     if (!event)
-      return res.status(404).json({ message: "Event not found" });
+      return res.status(404).json({
+        message: "Event not found"
+      });
 
     if (event.organizer.toString() !== req.user.id)
-      return res.status(403).json({ message: "Not authorized" });
+      return res.status(403).json({
+        message: "Not authorized"
+      });
 
-    Object.assign(event, req.body);
+    const {
+      title,
+      description,
+      date,
+      venue,
+      capacity,
+      deadline
+    } = req.body;
 
-    if (req.file) event.banner = req.file.path;
+    if (deadline && date && new Date(deadline) >= new Date(date)) {
+      return res.status(400).json({
+        message: "Registration deadline must be before event date"
+      });
+    }
+
+    if (capacity && capacity <= 0) {
+      return res.status(400).json({
+        message: "Capacity must be greater than 0"
+      });
+    }
+
+    event.title = title ?? event.title;
+    event.description = description ?? event.description;
+    event.date = date ?? event.date;
+    event.venue = venue ?? event.venue;
+    event.capacity = capacity ?? event.capacity;
+    event.deadline = deadline ?? event.deadline;
+
+    if (req.file) {
+      event.banner = req.file.path;
+    }
 
     await event.save();
 
@@ -82,23 +183,34 @@ export const updateEvent = async (req, res, next) => {
     });
 
     res.json(event);
+
   } catch (error) {
     next(error);
   }
 };
 
+
 /**
- * Organizer: Delete Own Event
+ * ================= DELETE EVENT =================
  */
 export const deleteEvent = async (req, res, next) => {
   try {
+
     const event = await Event.findById(req.params.id);
 
     if (!event)
-      return res.status(404).json({ message: "Event not found" });
+      return res.status(404).json({
+        message: "Event not found"
+      });
 
     if (event.organizer.toString() !== req.user.id)
-      return res.status(403).json({ message: "Not authorized" });
+      return res.status(403).json({
+        message: "Not authorized"
+      });
+
+    await Registration.deleteMany({
+      event: event._id
+    });
 
     await event.deleteOne();
 
@@ -108,41 +220,57 @@ export const deleteEvent = async (req, res, next) => {
       metadata: { eventId: req.params.id }
     });
 
-    res.json({ message: "Event deleted successfully" });
+    res.json({
+      message: "Event deleted successfully"
+    });
+
   } catch (error) {
     next(error);
   }
 };
 
+
 /**
- * Organizer: View Registrations for Own Event
+ * ================= EVENT REGISTRATIONS =================
  */
 export const getEventRegistrations = async (req, res, next) => {
   try {
+
     const event = await Event.findById(req.params.id);
 
     if (!event)
-      return res.status(404).json({ message: "Event not found" });
+      return res.status(404).json({
+        message: "Event not found"
+      });
 
     if (event.organizer.toString() !== req.user.id)
-      return res.status(403).json({ message: "Not authorized" });
+      return res.status(403).json({
+        message: "Not authorized"
+      });
 
-    const registrations = await Registration.find({
-      event: req.params.id
-    }).populate("user", "name email");
+    const registrations = await Registration
+      .find({ event: req.params.id })
+      .populate("user", "name email")
+      .lean();
 
     res.json(registrations);
+
   } catch (error) {
     next(error);
   }
 };
 
+
 /**
- * Organizer: Attendance Ratio Stats
+ * ================= ORGANIZER STATS =================
  */
 export const getOrganizerStats = async (req, res, next) => {
   try {
-    const events = await Event.find({ organizer: req.user.id });
+
+    const events = await Event.find({
+      organizer: req.user.id
+    });
+
     const eventIds = events.map(e => e._id);
 
     const stats = await Registration.aggregate([
@@ -159,22 +287,28 @@ export const getOrganizerStats = async (req, res, next) => {
     ]);
 
     res.json(stats);
+
   } catch (error) {
     next(error);
   }
 };
 
+
 /**
- * Admin: Suspend / Unsuspend Event
+ * ================= ADMIN SUSPEND EVENT =================
  */
 export const toggleEventSuspension = async (req, res, next) => {
   try {
+
     const event = await Event.findById(req.params.id);
 
     if (!event)
-      return res.status(404).json({ message: "Event not found" });
+      return res.status(404).json({
+        message: "Event not found"
+      });
 
     event.isSuspended = !event.isSuspended;
+
     await event.save();
 
     await AuditLog.create({
@@ -184,8 +318,13 @@ export const toggleEventSuspension = async (req, res, next) => {
     });
 
     res.json({
-      message: `Event ${event.isSuspended ? "suspended" : "activated"}`
+      message: `Event ${
+        event.isSuspended
+          ? "suspended"
+          : "activated"
+      }`
     });
+
   } catch (error) {
     next(error);
   }

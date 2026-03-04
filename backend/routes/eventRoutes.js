@@ -15,8 +15,10 @@ import { upload } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", getEvents);
+/* GET EVENTS */
+router.get("/", protect, getEvents);
 
+/* CREATE EVENT */
 router.post(
   "/",
   protect,
@@ -25,6 +27,7 @@ router.post(
   createEvent
 );
 
+/* UPDATE EVENT */
 router.put(
   "/:id",
   protect,
@@ -33,8 +36,15 @@ router.put(
   updateEvent
 );
 
-router.delete("/:id", protect, authorize("organizer"), deleteEvent);
+/* DELETE EVENT */
+router.delete(
+  "/:id",
+  protect,
+  authorize("organizer"),
+  deleteEvent
+);
 
+/* EVENT REGISTRATIONS */
 router.get(
   "/:id/registrations",
   protect,
@@ -42,6 +52,7 @@ router.get(
   getEventRegistrations
 );
 
+/* ORGANIZER STATS */
 router.get(
   "/organizer/stats",
   protect,
@@ -49,6 +60,7 @@ router.get(
   getOrganizerStats
 );
 
+/* ADMIN SUSPEND */
 router.put(
   "/suspend/:id",
   protect,

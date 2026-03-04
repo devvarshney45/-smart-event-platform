@@ -4,7 +4,7 @@ import Event from "../models/Event.js";
 import User from "../models/User.js";
 import AuditLog from "../models/AuditLog.js";
 import { generateQR } from "../utils/generateQR.js";
-import { sendEmail } from "../utils/sendEmail.js";
+import { sendEmail, registrationTemplate } from "../utils/sendEmail.js";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -12,36 +12,61 @@ import { v4 as uuidv4 } from "uuid";
  */
 export const registerForEvent = async (req, res, next) => {
   try {
+
     const { eventId } = req.params;
     const userId = req.user.id;
 
+    /* validate event id */
+
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({
+        message: "Invalid event ID"
+      });
+    }
+
     const event = await Event.findById(eventId);
+
     if (!event)
-      return res.status(404).json({ message: "Event not found" });
+      return res.status(404).json({
+        message: "Event not found"
+      });
+
+    /* suspended event */
 
     if (event.isSuspended)
       return res.status(403).json({
         message: "This event has been suspended by admin"
       });
 
+    /* deadline validation */
+
     if (new Date() > new Date(event.deadline))
       return res.status(400).json({
         message: "Registration deadline has passed"
       });
 
-    /* ✅ SAFE ObjectId matching */
+    /* event finished */
+
+    if (new Date() > new Date(event.date))
+      return res.status(400).json({
+        message: "Event already completed"
+      });
+
+    /* duplicate registration */
+
     const existingRegistration = await Registration.findOne({
       user: new mongoose.Types.ObjectId(userId),
       event: new mongoose.Types.ObjectId(eventId)
     });
 
-    /* 🔥 IMPORTANT: Do NOT return 400 for duplicate */
     if (existingRegistration) {
       return res.status(200).json({
         message: "Already registered",
         registration: existingRegistration
       });
     }
+
+    /* capacity validation */
 
     const registrationCount = await Registration.countDocuments({
       event: eventId
@@ -52,36 +77,41 @@ export const registerForEvent = async (req, res, next) => {
         message: "Event capacity reached"
       });
 
+    /* generate unique QR */
+
     const qrIdentifier = uuidv4();
 
     const registration = await Registration.create({
       user: userId,
       event: eventId,
-      qrIdentifier
+      qrIdentifier,
+      attended: false,
+      certificateGenerated: false
     });
 
-    /* ⚡ Respond FIRST (very important for UI speed) */
+    /* respond immediately */
+
     res.status(201).json({
       message: "Registration successful",
       registration
     });
 
-    /* 🔥 Background tasks (do not block response) */
+    /* background tasks */
+
     try {
-      const user = await User.findById(userId);
 
-      await sendEmail(
-        user.email,
-        "Event Registration Confirmed",
-        `Hello ${user.name},
+      const user = await User.findById(userId).lean();
 
-You have successfully registered for ${event.title}.
+      if (user?.email) {
 
-Event Date: ${event.date}
-Venue: ${event.venue}
+        await sendEmail(
+          user.email,
+          "Event Registration Confirmed",
+          `Hello ${user.name}, you registered for ${event.title}`,
+          registrationTemplate(user.name, event)
+        );
 
-Please bring your QR code on event day.`
-      );
+      }
 
       await AuditLog.create({
         user: userId,
@@ -103,11 +133,13 @@ Please bring your QR code on event day.`
 };
 
 
+
 /**
  * ================= GET MY REGISTRATIONS =================
  */
 export const myRegistrations = async (req, res, next) => {
   try {
+
     const registrations = await Registration.find({
       user: req.user.id
     })
@@ -115,14 +147,18 @@ export const myRegistrations = async (req, res, next) => {
       .lean();
 
     const registrationsWithQR = await Promise.all(
+
       registrations.map(async (reg) => {
+
         const qrImage = await generateQR(reg.qrIdentifier);
 
         return {
           ...reg,
           qrImage
         };
+
       })
+
     );
 
     res.json(registrationsWithQR);

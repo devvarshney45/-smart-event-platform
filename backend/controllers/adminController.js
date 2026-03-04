@@ -4,46 +4,64 @@ import Registration from "../models/Registration.js";
 import AuditLog from "../models/AuditLog.js";
 import { generateCSV } from "../utils/generateCSV.js";
 
-/**
- * Admin: View all users
- */
+/* ================= ADMIN USERS ================= */
 export const getAllUsers = async (req, res, next) => {
   try {
-    const users = await User.find().select("-password");
+
+    const users = await User
+      .find()
+      .select("-password")
+      .lean();
+
     res.json(users);
+
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Admin: View all events
- */
+
+/* ================= ADMIN EVENTS ================= */
 export const getAllEvents = async (req, res, next) => {
   try {
-    const events = await Event.find().populate("organizer", "name email");
+
+    const events = await Event
+      .find()
+      .populate("organizer", "name email")
+      .lean();
+
     res.json(events);
+
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Admin: Assign role
- */
+
+/* ================= ASSIGN ROLE ================= */
 export const assignRole = async (req, res, next) => {
   try {
+
     const { role } = req.body;
 
-    const allowedRoles = ["admin", "organizer", "volunteer", "participant"];
+    const allowedRoles = [
+      "admin",
+      "organizer",
+      "volunteer",
+      "participant"
+    ];
 
     if (!allowedRoles.includes(role))
-      return res.status(400).json({ message: "Invalid role" });
+      return res.status(400).json({
+        message: "Invalid role"
+      });
 
     const user = await User.findById(req.params.id);
 
     if (!user)
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        message: "User not found"
+      });
 
     user.role = role;
     await user.save();
@@ -57,64 +75,86 @@ export const assignRole = async (req, res, next) => {
       }
     });
 
-    res.json({ message: "Role updated successfully" });
+    res.json({
+      message: "Role updated successfully"
+    });
+
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Admin Dashboard Analytics
- */
+
+/* ================= ADMIN DASHBOARD STATS ================= */
 export const getAdminStats = async (req, res, next) => {
   try {
+
     const totalUsers = await User.countDocuments();
     const totalEvents = await Event.countDocuments();
     const totalRegistrations = await Registration.countDocuments();
 
-    const attendanceStats = await Registration.aggregate([
+    /* event wise attendance */
+
+    const attendanceStats = await Event.aggregate([
+
       {
-        $group: {
-          _id: "$event",
-          totalRegistrations: { $sum: 1 },
+        $lookup: {
+          from: "registrations",
+          localField: "_id",
+          foreignField: "event",
+          as: "registrations"
+        }
+      },
+
+      {
+        $project: {
+          eventTitle: "$title",
+
+          totalRegistrations: {
+            $size: "$registrations"
+          },
+
           attendedCount: {
-            $sum: { $cond: ["$attended", 1, 0] }
+            $size: {
+              $filter: {
+                input: "$registrations",
+                as: "r",
+                cond: { $eq: ["$$r.attended", true] }
+              }
+            }
           }
         }
       },
+
       {
-        $lookup: {
-          from: "events",
-          localField: "_id",
-          foreignField: "_id",
-          as: "eventDetails"
-        }
-      },
-      { $unwind: "$eventDetails" },
-      {
-        $project: {
-          eventTitle: "$eventDetails.title",
-          totalRegistrations: 1,
-          attendedCount: 1,
+        $addFields: {
           attendancePercentage: {
             $cond: [
               { $eq: ["$totalRegistrations", 0] },
               0,
               {
-                $multiply: [
+                $round: [
                   {
-                    $divide: [
-                      "$attendedCount",
-                      "$totalRegistrations"
+                    $multiply: [
+                      {
+                        $divide: [
+                          "$attendedCount",
+                          "$totalRegistrations"
+                        ]
+                      },
+                      100
                     ]
                   },
-                  100
+                  2
                 ]
               }
             ]
           }
         }
-      }
+      },
+
+      { $sort: { totalRegistrations: -1 } }
+
     ]);
 
     res.json({
@@ -123,24 +163,28 @@ export const getAdminStats = async (req, res, next) => {
       totalRegistrations,
       attendanceStats
     });
+
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Organizer: Export participants CSV
- */
+
+/* ================= CSV EXPORT ================= */
 export const exportParticipants = async (req, res, next) => {
   try {
-    const registrations = await Registration.find({
-      event: req.params.eventId
-    }).populate("user", "name email attended");
 
-    const data = registrations.map(r => ({
-      name: r.user.name,
-      email: r.user.email,
-      attended: r.attended
+    const registrations = await Registration
+      .find({
+        event: req.params.eventId
+      })
+      .populate("user", "name email")
+      .lean();
+
+    const data = registrations.map((r) => ({
+      Name: r.user?.name,
+      Email: r.user?.email,
+      Attended: r.attended ? "Yes" : "No"
     }));
 
     const csv = generateCSV(data);
@@ -148,19 +192,23 @@ export const exportParticipants = async (req, res, next) => {
     res.header("Content-Type", "text/csv");
     res.attachment("participants.csv");
     res.send(csv);
+
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Public Certificate Verification Portal
- */
+
+/* ================= CERTIFICATE VERIFICATION ================= */
 export const verifyCertificate = async (req, res, next) => {
   try {
-    const registration = await Registration.findOne({
-      certificateId: req.params.certId
-    }).populate("user event");
+
+    const registration = await Registration
+      .findOne({
+        certificateId: req.params.certId
+      })
+      .populate("user event")
+      .lean();
 
     if (!registration)
       return res.status(404).json({
@@ -170,8 +218,9 @@ export const verifyCertificate = async (req, res, next) => {
     res.json({
       participant: registration.user.name,
       event: registration.event.title,
-      date: registration.event.date
+      date: new Date(registration.event.date).toDateString()
     });
+
   } catch (error) {
     next(error);
   }
