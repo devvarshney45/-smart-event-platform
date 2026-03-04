@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import Registration from "../models/Registration.js";
 import Event from "../models/Event.js";
 import User from "../models/User.js";
@@ -9,86 +7,69 @@ import { sendEmail } from "../utils/sendEmail.js";
 
 export const downloadCertificate = async (req, res) => {
 
-try {
+  try {
 
-const { eventId } = req.params;
+    const { eventId } = req.params;
 
-const reg = await Registration.findOne({
-  user: req.user.id,
-  event: eventId
-});
+    const reg = await Registration.findOne({
+      user: req.user.id,
+      event: eventId
+    });
 
-if (!reg) {
-  return res.status(404).json({
-    message: "Not registered"
-  });
-}
+    if (!reg) {
+      return res.status(404).json({
+        message: "Not registered"
+      });
+    }
 
-if (!reg.attended) {
-  return res.status(400).json({
-    message: "Not attended yet"
-  });
-}
+    if (!reg.attended) {
+      return res.status(400).json({
+        message: "Not attended yet"
+      });
+    }
 
-const event = await Event.findById(eventId);
-const user = await User.findById(req.user.id);
+    const event = await Event.findById(eventId);
+    const user = await User.findById(req.user.id);
 
-/* Generate certificate id */
+    /* Generate certificate ID */
 
-if (!reg.certificateId) {
+    if (!reg.certificateId) {
 
-  reg.certificateId = uuidv4();
-  reg.certificateGenerated = true;
+      reg.certificateId = uuidv4();
+      reg.certificateGenerated = true;
 
-  await reg.save();
+      await reg.save();
 
-}
+    }
 
-const certificatesDir = path.join(process.cwd(), "certificates");
+    /* Generate PDF buffer */
 
-if (!fs.existsSync(certificatesDir)) {
-  fs.mkdirSync(certificatesDir);
-}
+    const pdfBuffer = await generateCertificate(
+      user,
+      event,
+      reg.certificateId
+    );
 
-const filePath = path.join(
-  certificatesDir,
-  `${reg.certificateId}.pdf`
-);
+    /* Send email in background */
 
-/* Delete old certificate */
+    try {
 
-if (fs.existsSync(filePath)) {
-  fs.unlinkSync(filePath);
-}
+      if (user?.email) {
 
-/* Generate certificate */
+        const frontendURL =
+          process.env.FRONTEND_URL ||
+          "http://localhost:5173";
 
-await generateCertificate(
-  user,
-  event,
-  reg.certificateId
-);
+        const verifyLink =
+          `${frontendURL}/verify/${reg.certificateId}`;
 
-/* Send email in background */
+        await sendEmail(
 
-try {
+          user.email,
 
-  if (user?.email) {
+          "Your Event Certificate",
 
-    const frontendURL =
-      process.env.FRONTEND_URL ||
-      "http://localhost:5173";
-
-    const verifyLink =
-      `${frontendURL}/verify/${reg.certificateId}`;
-
-    await sendEmail(
-
-      user.email,
-
-      "Your Event Certificate",
-
-      `Hello ${user.name},
+`Hello ${user.name},
 
 Your certificate for "${event.title}" is ready.
 
@@ -99,30 +80,35 @@ ${verifyLink}
 
 Thank you.`
 
+        );
+
+      }
+
+    } catch (emailError) {
+
+      console.log("Email failed:", emailError);
+
+    }
+
+    /* Download certificate */
+
+    res.setHeader("Content-Type", "application/pdf");
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=${user.name}-${event.title}-certificate.pdf`
     );
 
+    res.send(pdfBuffer);
+
+  } catch (error) {
+
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Certificate generation failed"
+    });
+
   }
-
-} catch (emailError) {
-
-  console.log("Email failed:", emailError);
-
-}
-
-/* Download certificate */
-
-setTimeout(() => {
-  return res.download(filePath);
-}, 200);
-
-} catch (error) {
-
-console.error(error);
-
-return res.status(500).json({
-  message: "Certificate generation failed"
-});
-
-}
 
 };
