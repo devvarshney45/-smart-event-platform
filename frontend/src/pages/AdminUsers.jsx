@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import axios from "../services/axios";
-import { useAppStore } from "../app/store";
+import api from "../services/axios";
 
 export default function AdminUsers() {
-  const token = useAppStore((state) => state.token);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -13,9 +11,7 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get("/users", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/users");
       setUsers(res.data);
     } catch (err) {
       console.error(err);
@@ -26,26 +22,27 @@ export default function AdminUsers() {
 
   const updateRole = async (id, newRole) => {
     try {
-      await axios.put(
-        `/users/${id}/role`,
-        { role: newRole },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(`/users/${id}/role`, {
+        role: newRole,
+      });
 
       setUsers((prev) =>
         prev.map((u) =>
           u._id === id ? { ...u, role: newRole } : u
         )
       );
-
-      alert("Role updated successfully");
     } catch (err) {
       console.error(err);
       alert("Failed to update role");
     }
   };
 
-  if (loading) return <div>Loading users...</div>;
+  if (loading)
+    return (
+      <div className="text-center mt-10">
+        Loading users...
+      </div>
+    );
 
   return (
     <>
@@ -53,7 +50,7 @@ export default function AdminUsers() {
         Manage Users
       </h1>
 
-      <div className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-x-auto">
         <table className="w-full text-left">
           <thead className="bg-gray-100 dark:bg-slate-700">
             <tr>
@@ -78,9 +75,12 @@ export default function AdminUsers() {
 
                 <td className="p-3">
                   <select
-                    defaultValue={user.role}
+                    value={user.role}
                     onChange={(e) =>
-                      updateRole(user._id, e.target.value)
+                      updateRole(
+                        user._id,
+                        e.target.value
+                      )
                     }
                     className="
                       px-3 py-2 rounded-md
@@ -90,10 +90,18 @@ export default function AdminUsers() {
                       focus:outline-none focus:ring-2 focus:ring-indigo-500
                     "
                   >
-                    <option value="participant">Participant</option>
-                    <option value="organizer">Organizer</option>
-                    <option value="volunteer">Volunteer</option>
-                    <option value="admin">Admin</option>
+                    <option value="participant">
+                      Participant
+                    </option>
+                    <option value="organizer">
+                      Organizer
+                    </option>
+                    <option value="volunteer">
+                      Volunteer
+                    </option>
+                    <option value="admin">
+                      Admin
+                    </option>
                   </select>
                 </td>
               </tr>

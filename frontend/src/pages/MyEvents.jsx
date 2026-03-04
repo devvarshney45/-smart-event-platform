@@ -18,7 +18,6 @@ export default function MyEvents() {
       const res = await api.get("/events?mine=true");
       setEvents(res.data || []);
     } catch (err) {
-      console.log("Error loading events:", err);
       toast.error("Failed to load events");
     } finally {
       setLoading(false);
@@ -29,25 +28,45 @@ export default function MyEvents() {
     fetchMyEvents();
   }, []);
 
-  /* ================= DELETE EVENT ================= */
+  /* ================= DELETE ================= */
   const handleDelete = async (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this event?"
-    );
-    if (!confirmDelete) return;
+    if (!window.confirm("Delete this event?")) return;
 
     try {
       await api.delete(`/events/${id}`);
-
-      // 🔥 Instant UI update (no reload needed)
       setEvents((prev) => prev.filter((e) => e._id !== id));
+      toast.success("Event deleted");
+    } catch (err) {
+      toast.error("Delete failed");
+    }
+  };
 
-      toast.success("Event deleted successfully");
+  /* ================= CSV EXPORT ================= */
+  const handleExport = async (eventId) => {
+    try {
+      const response = await api.get(
+        `/admin/export/${eventId}`,
+        { responseType: "blob" }
+      );
+
+      const blob = new Blob([response.data], {
+        type: "text/csv",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "participants.csv";
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("CSV downloaded");
 
     } catch (err) {
-      toast.error(
-        err.response?.data?.message || "Delete failed"
-      );
+      toast.error("Export failed");
     }
   };
 
@@ -64,80 +83,109 @@ export default function MyEvents() {
         </Button>
       </div>
 
-      {/* NO EVENTS */}
       {events.length === 0 ? (
         <div className="text-gray-500 text-center mt-10 text-lg">
           No events created yet.
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-6">
-          {events.map((event) => (
-            <Card key={event._id}>
-              {/* TITLE */}
-              <h3 className="font-semibold text-lg mb-2">
-                {event.title || "Untitled Event"}
-              </h3>
+          {events.map((event) => {
+            const total = event.totalRegistrations || 0;
+            const attended = event.attendedCount || 0;
+            const percentage =
+              total === 0
+                ? 0
+                : Math.round((attended / total) * 100);
 
-              {/* DESCRIPTION */}
-              <p className="text-gray-500 text-sm mb-3">
-                {event.description || "No description available"}
-              </p>
+            return (
+              <Card key={event._id}>
+                {/* TITLE */}
+                <h3 className="font-semibold text-lg mb-2">
+                  {event.title}
+                </h3>
 
-              {/* INFO */}
-              <div className="text-sm text-gray-400 space-y-1">
-                <p>
-                  <span className="font-medium">Date:</span>{" "}
-                  {event.date
-                    ? new Date(event.date).toLocaleDateString()
-                    : "N/A"}
+                {/* DESCRIPTION */}
+                <p className="text-gray-500 text-sm mb-3">
+                  {event.description}
                 </p>
 
-                <p>
-                  <span className="font-medium">Venue:</span>{" "}
-                  {event.venue || "N/A"}
-                </p>
+                {/* ANALYTICS */}
+                <div className="text-sm space-y-1 mb-3">
+                  <p>
+                    Registrations:{" "}
+                    <span className="font-medium">
+                      {total}
+                    </span>
+                  </p>
 
-                <p>
-                  <span className="font-medium">Capacity:</span>{" "}
-                  {event.capacity || "N/A"}
-                </p>
+                  <p>
+                    Attended:{" "}
+                    <span className="font-medium">
+                      {attended}
+                    </span>
+                  </p>
 
-                <p>
-                  <span className="font-medium">Deadline:</span>{" "}
-                  {event.deadline
-                    ? new Date(event.deadline).toLocaleDateString()
-                    : "N/A"}
-                </p>
-              </div>
+                  {/* Progress Bar */}
+                  <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-3 mt-2">
+                    <div
+                      className="bg-indigo-600 h-3 rounded-full transition-all"
+                      style={{
+                        width: `${percentage}%`,
+                      }}
+                    />
+                  </div>
 
-              {/* ACTIONS */}
-              <div className="flex gap-3 mt-4 flex-wrap">
-                <Button
-                  onClick={() =>
-                    navigate(`/dashboard/edit-event/${event._id}`)
-                  }
-                >
-                  Edit
-                </Button>
+                  <p className="text-xs font-medium mt-1">
+                    {percentage}% Attendance
+                  </p>
+                </div>
 
-                <Button
-                  onClick={() =>
-                    navigate(`/dashboard/event/${event._id}/registrations`)
-                  }
-                  className="bg-green-600"
-                >
-                  Registrations
-                </Button>
+                {/* INFO */}
+                <div className="text-sm text-gray-400 space-y-1">
+                  <p>
+                    Date:{" "}
+                    {new Date(event.date).toLocaleDateString()}
+                  </p>
+                  <p>Venue: {event.venue}</p>
+                  <p>Capacity: {event.capacity}</p>
+                </div>
 
-                <Button
-                  onClick={() => handleDelete(event._id)}
-                  className="bg-red-500"
-                >
-                  Delete
-                </Button>
-              </div>
-            </Card>
-          ))}
+                {/* ACTIONS */}
+                <div className="flex gap-3 mt-4 flex-wrap">
+                  <Button
+                    onClick={() =>
+                      navigate(`/dashboard/edit-event/${event._id}`)
+                    }
+                  >
+                    Edit
+                  </Button>
+
+                  <Button
+                    onClick={() =>
+                      navigate(`/dashboard/event/${event._id}/registrations`)
+                    }
+                    className="bg-green-600"
+                  >
+                    Registrations
+                  </Button>
+
+                  <Button
+                    onClick={() => handleExport(event._id)}
+                    className="bg-indigo-500"
+                  >
+                    Export CSV
+                  </Button>
+
+                  <Button
+                    onClick={() => handleDelete(event._id)}
+                    className="bg-red-500"
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

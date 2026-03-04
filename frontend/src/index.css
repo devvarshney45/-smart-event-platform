@@ -4,47 +4,32 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================= */
-/* Global Reset */
-/* ============================= */
-
+/* Reset */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-html, body, #root {
-  height: 100%;
-  width: 100%;
+html, body {
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+  min-height: 100%;
 }
 
-html {
-  scroll-behavior: smooth;
+#root {
+  min-height: 100vh;
+  width: 100%;
 }
-
-/* ============================= */
-/* Base Body (NO GRADIENT HERE) */
-/* ============================= */
 
 body {
-  @apply bg-slate-100
-         text-slate-900
-         dark:bg-slate-900
-         dark:text-slate-200
-         font-sans;
+  @apply text-slate-900 dark:text-slate-200 font-sans;
 }
 
-/* Remove default margins */
 h1, h2, h3, h4, h5, h6, p {
   margin: 0;
 }
-
-/* ============================= */
-/* Smooth Transitions */
-/* ============================= */
 
 button,
 a,
@@ -54,66 +39,7 @@ select {
   @apply transition-all duration-200 ease-in-out;
 }
 
-/* ============================= */
-/* Glass Card Effect */
-/* ============================= */
-
-.glass {
-  @apply bg-white/70
-         dark:bg-white/5
-         backdrop-blur-xl
-         border border-white/30
-         shadow-lg
-         rounded-2xl;
-}
-
-/* ============================= */
-/* Modern Card */
-/* ============================= */
-
-.card-modern {
-  @apply glass p-6 hover:shadow-xl hover:-translate-y-1 transition;
-}
-
-/* ============================= */
-/* Modern Button */
-/* ============================= */
-
-.btn-primary {
-  @apply px-6 py-2 rounded-full
-         bg-gradient-to-r from-indigo-600 to-purple-600
-         text-white font-semibold
-         shadow-md
-         hover:scale-105
-         hover:shadow-lg;
-}
-
-.btn-secondary {
-  @apply px-6 py-2 rounded-full
-         border border-slate-400
-         text-slate-700
-         dark:text-slate-200
-         hover:bg-slate-100
-         dark:hover:bg-slate-800;
-}
-
-/* ============================= */
-/* Inputs */
-/* ============================= */
-
-.input-modern {
-  @apply w-full px-4 py-3 rounded-xl
-         border border-slate-300
-         dark:border-slate-700
-         bg-white dark:bg-slate-900
-         focus:ring-2 focus:ring-indigo-500
-         outline-none;
-}
-
-/* ============================= */
-/* Scrollbar Styling */
-/* ============================= */
-
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }

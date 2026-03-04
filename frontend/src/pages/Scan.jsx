@@ -4,7 +4,10 @@ import api from "../services/axios";
 import toast from "react-hot-toast";
 
 export default function Scan() {
+
   const scannerRef = useRef(null);
+  const lastScannedRef = useRef(null);
+
   const readerId = "reader";
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -12,19 +15,26 @@ export default function Scan() {
   const [lastResult, setLastResult] = useState(null);
 
   /* ================= START ON MOUNT ================= */
+
   useEffect(() => {
+
     startScanner();
 
     return () => {
       stopScanner();
     };
+
     // eslint-disable-next-line
   }, []);
 
   /* ================= START SCANNER ================= */
+
   const startScanner = async () => {
+
     try {
+
       const scanner = new Html5Qrcode(readerId);
+
       scannerRef.current = scanner;
 
       await scanner.start(
@@ -32,52 +42,71 @@ export default function Scan() {
         {
           fps: 10,
           qrbox: { width: 250, height: 250 },
-          aspectRatio: 1,
+          aspectRatio: 1
         },
         handleScan
       );
 
       setIsActive(true);
+
     } catch (err) {
+
       console.error("Camera start error:", err);
       toast.error("Camera failed to start");
+
     }
+
   };
 
   /* ================= HANDLE SCAN ================= */
-  const handleScan = async (decodedText) => {
-    // ✅ Only prevent double scan
-    if (isProcessing) return;
 
-    setIsProcessing(true);
+  const handleScan = async (decodedText) => {
+
+    if (isProcessing) return;
 
     let finalValue = decodedText;
 
-    // Handle JSON QR
+    /* JSON QR support */
+
     try {
+
       const parsed = JSON.parse(decodedText);
+
       if (parsed?.id) {
         finalValue = parsed.id;
       }
+
     } catch {
       // ignore
     }
 
+    finalValue = finalValue.trim();
+
+    /* prevent same QR repeat */
+
+    if (lastScannedRef.current === finalValue) return;
+
+    lastScannedRef.current = finalValue;
+
+    setIsProcessing(true);
+
     try {
+
       const res = await api.post("/attendance", {
-        qrIdentifier: finalValue.trim(),
+        qrIdentifier: finalValue
       });
 
       toast.success(res.data.message || "Attendance marked");
 
       setLastResult({
         success: true,
-        message: res.data.message,
+        message: res.data.message
       });
 
       await stopScanner();
 
     } catch (err) {
+
       const msg =
         err.response?.data?.message || "Attendance failed";
 
@@ -85,38 +114,57 @@ export default function Scan() {
 
       setLastResult({
         success: false,
-        message: msg,
+        message: msg
       });
 
       setIsProcessing(false);
+
     }
+
   };
 
   /* ================= STOP SCANNER ================= */
+
   const stopScanner = async () => {
+
     if (scannerRef.current) {
+
       try {
+
         await scannerRef.current.stop();
         await scannerRef.current.clear();
+
       } catch (err) {
         console.log("Stop error:", err);
       }
+
       scannerRef.current = null;
+
     }
+
     setIsActive(false);
+
   };
 
   /* ================= RESTART ================= */
+
   const restartScanner = async () => {
+
     setLastResult(null);
     setIsProcessing(false);
+    lastScannedRef.current = null;
+
     await stopScanner();
     await startScanner();
+
   };
 
   /* ================= UI ================= */
+
   return (
+
     <div className="max-w-lg mx-auto mt-10 p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
+
       <h2 className="text-2xl font-bold text-center mb-6">
         Scan Event QR Code
       </h2>
@@ -131,6 +179,7 @@ export default function Scan() {
       </p>
 
       {lastResult && (
+
         <div
           className={`mt-6 text-center font-semibold ${
             lastResult.success
@@ -140,16 +189,22 @@ export default function Scan() {
         >
           {lastResult.message}
         </div>
+
       )}
 
       {!isActive && (
+
         <button
           onClick={restartScanner}
           className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition"
         >
           Scan Next Participant
         </button>
+
       )}
+
     </div>
+
   );
+
 }
