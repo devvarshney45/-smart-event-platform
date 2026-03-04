@@ -14,7 +14,7 @@ export default function Scan() {
   const [isActive, setIsActive] = useState(false);
   const [lastResult, setLastResult] = useState(null);
 
-  /* ================= START ON MOUNT ================= */
+  const [markedStudents, setMarkedStudents] = useState([]);
 
   useEffect(() => {
 
@@ -24,10 +24,7 @@ export default function Scan() {
       stopScanner();
     };
 
-    // eslint-disable-next-line
   }, []);
-
-  /* ================= START SCANNER ================= */
 
   const startScanner = async () => {
 
@@ -41,8 +38,7 @@ export default function Scan() {
         { facingMode: "environment" },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1
+          qrbox: { width: 250, height: 250 }
         },
         handleScan
       );
@@ -51,14 +47,11 @@ export default function Scan() {
 
     } catch (err) {
 
-      console.error("Camera start error:", err);
       toast.error("Camera failed to start");
 
     }
 
   };
-
-  /* ================= HANDLE SCAN ================= */
 
   const handleScan = async (decodedText) => {
 
@@ -66,23 +59,15 @@ export default function Scan() {
 
     let finalValue = decodedText;
 
-    /* JSON QR support */
-
     try {
 
       const parsed = JSON.parse(decodedText);
 
-      if (parsed?.id) {
-        finalValue = parsed.id;
-      }
+      if (parsed?.id) finalValue = parsed.id;
 
-    } catch {
-      // ignore
-    }
+    } catch {}
 
     finalValue = finalValue.trim();
-
-    /* prevent same QR repeat */
 
     if (lastScannedRef.current === finalValue) return;
 
@@ -96,12 +81,22 @@ export default function Scan() {
         qrIdentifier: finalValue
       });
 
-      toast.success(res.data.message || "Attendance marked");
+      toast.success(res.data.message);
 
       setLastResult({
         success: true,
         message: res.data.message
       });
+
+      /* add student to list */
+
+      setMarkedStudents(prev => [
+        {
+          name: res.data.name,
+          time: new Date().toLocaleTimeString()
+        },
+        ...prev
+      ]);
 
       await stopScanner();
 
@@ -123,8 +118,6 @@ export default function Scan() {
 
   };
 
-  /* ================= STOP SCANNER ================= */
-
   const stopScanner = async () => {
 
     if (scannerRef.current) {
@@ -134,9 +127,7 @@ export default function Scan() {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
 
-      } catch (err) {
-        console.log("Stop error:", err);
-      }
+      } catch {}
 
       scannerRef.current = null;
 
@@ -145,8 +136,6 @@ export default function Scan() {
     setIsActive(false);
 
   };
-
-  /* ================= RESTART ================= */
 
   const restartScanner = async () => {
 
@@ -159,49 +148,84 @@ export default function Scan() {
 
   };
 
-  /* ================= UI ================= */
-
   return (
 
-    <div className="max-w-lg mx-auto mt-10 p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
+    <div className="max-w-5xl mx-auto mt-10 grid md:grid-cols-2 gap-6">
 
-      <h2 className="text-2xl font-bold text-center mb-6">
-        Scan Event QR Code
-      </h2>
+      {/* Scanner */}
 
-      <div
-        id={readerId}
-        className="w-full min-h-[300px] rounded-xl overflow-hidden"
-      />
+      <div className="p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
 
-      <p className="text-sm text-gray-500 text-center mt-4">
-        Point camera at participant QR code
-      </p>
-
-      {lastResult && (
+        <h2 className="text-2xl font-bold text-center mb-6">
+          Scan Event QR Code
+        </h2>
 
         <div
-          className={`mt-6 text-center font-semibold ${
-            lastResult.success
-              ? "text-green-600"
-              : "text-red-500"
-          }`}
-        >
-          {lastResult.message}
+          id={readerId}
+          className="w-full min-h-[300px]"
+        />
+
+        {lastResult && (
+
+          <div className={`mt-6 text-center font-semibold ${
+            lastResult.success ? "text-green-600" : "text-red-500"
+          }`}>
+            {lastResult.message}
+          </div>
+
+        )}
+
+        {!isActive && (
+
+          <button
+            onClick={restartScanner}
+            className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg"
+          >
+            Scan Next Participant
+          </button>
+
+        )}
+
+      </div>
+
+      {/* Attendance List */}
+
+      <div className="p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
+
+        <h2 className="text-xl font-bold mb-4">
+          Marked Attendance
+        </h2>
+
+        {markedStudents.length === 0 && (
+          <p className="text-gray-500 text-sm">
+            No attendance marked yet
+          </p>
+        )}
+
+        <div className="space-y-3 max-h-[350px] overflow-y-auto">
+
+          {markedStudents.map((s, i) => (
+
+            <div
+              key={i}
+              className="flex justify-between p-3 bg-green-50 dark:bg-slate-700 rounded-lg"
+            >
+
+              <span className="font-medium">
+                {s.name}
+              </span>
+
+              <span className="text-sm text-gray-500">
+                {s.time}
+              </span>
+
+            </div>
+
+          ))}
+
         </div>
 
-      )}
-
-      {!isActive && (
-
-        <button
-          onClick={restartScanner}
-          className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition"
-        >
-          Scan Next Participant
-        </button>
-
-      )}
+      </div>
 
     </div>
 
