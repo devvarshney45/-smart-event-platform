@@ -2,138 +2,148 @@ import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 
 export const generateCertificate = async (user, event, certId) => {
+  return new Promise(async (resolve, reject) => {
+    try {
 
-  return new Promise(async (resolve) => {
+      const doc = new PDFDocument({
+        size: "A4",
+        layout: "landscape",
+        margin: 0
+      });
 
-    const doc = new PDFDocument({
-      size: "A4",
-      layout: "landscape",
-      margin: 0
-    });
+      const buffers = [];
 
-    const buffers = [];
+      /* Collect PDF chunks */
+      doc.on("data", (chunk) => buffers.push(chunk));
 
-    doc.on("data", buffers.push.bind(buffers));
+      doc.on("end", () => {
+        const pdfBuffer = Buffer.concat(buffers);
+        resolve(pdfBuffer);
+      });
 
-    doc.on("end", () => {
-      const pdfBuffer = Buffer.concat(buffers);
-      resolve(pdfBuffer);
-    });
+      doc.on("error", (err) => reject(err));
 
-    const width = doc.page.width;
-    const height = doc.page.height;
+      const width = doc.page.width;
+      const height = doc.page.height;
 
-    /* Background */
+      /* ================= Background ================= */
 
-    doc.rect(0, 0, width, height).fill("#f9fafb");
+      doc.rect(0, 0, width, height).fill("#f9fafb");
 
-    /* Gold Border */
+      /* ================= Gold Border ================= */
 
-    doc.lineWidth(10)
-       .strokeColor("#d4af37")
-       .rect(30, 30, width - 60, height - 60)
-       .stroke();
+      doc.lineWidth(10)
+        .strokeColor("#d4af37")
+        .rect(30, 30, width - 60, height - 60)
+        .stroke();
 
-    doc.lineWidth(2)
-       .strokeColor("#f5d67b")
-       .rect(50, 50, width - 100, height - 100)
-       .stroke();
+      doc.lineWidth(2)
+        .strokeColor("#f5d67b")
+        .rect(50, 50, width - 100, height - 100)
+        .stroke();
 
-    /* Title */
+      /* ================= Title ================= */
 
-    doc.font("Helvetica-Bold")
-       .fontSize(40)
-       .fillColor("#111827")
-       .text(
-         "CERTIFICATE OF PARTICIPATION",
-         0,
-         100,
-         { align: "center" }
-       );
+      doc.font("Helvetica-Bold")
+        .fontSize(40)
+        .fillColor("#111827")
+        .text(
+          "CERTIFICATE OF PARTICIPATION",
+          0,
+          100,
+          { align: "center" }
+        );
 
-    /* Subtitle */
+      /* ================= Subtitle ================= */
 
-    doc.font("Helvetica")
-       .fontSize(20)
-       .fillColor("#6b7280")
-       .text(
-         "This certificate is proudly presented to",
-         0,
-         230,
-         { align: "center" }
-       );
+      doc.font("Helvetica")
+        .fontSize(20)
+        .fillColor("#6b7280")
+        .text(
+          "This certificate is proudly presented to",
+          0,
+          230,
+          { align: "center" }
+        );
 
-    /* Name */
+      /* ================= Participant Name ================= */
 
-    doc.font("Helvetica-Bold")
-       .fontSize(42)
-       .fillColor("#2563eb")
-       .text(
-         user.name.toUpperCase(),
-         0,
-         280,
-         { align: "center" }
-       );
+      doc.font("Helvetica-Bold")
+        .fontSize(42)
+        .fillColor("#2563eb")
+        .text(
+          user.name.toUpperCase(),
+          0,
+          280,
+          { align: "center" }
+        );
 
-    /* Event */
+      /* ================= Event Name ================= */
 
-    doc.font("Helvetica")
-       .fontSize(20)
-       .fillColor("#374151")
-       .text(
-         "For successfully attending the event",
-         0,
-         350,
-         { align: "center" }
-       );
+      doc.font("Helvetica")
+        .fontSize(20)
+        .fillColor("#374151")
+        .text(
+          "For successfully attending the event",
+          0,
+          350,
+          { align: "center" }
+        );
 
-    doc.font("Helvetica-Bold")
-       .fontSize(26)
-       .fillColor("#111827")
-       .text(
-         `"${event.title}"`,
-         0,
-         390,
-         { align: "center" }
-       );
+      doc.font("Helvetica-Bold")
+        .fontSize(26)
+        .fillColor("#111827")
+        .text(
+          `"${event.title}"`,
+          0,
+          390,
+          { align: "center" }
+        );
 
-    doc.font("Helvetica")
-       .fontSize(16)
-       .fillColor("#6b7280")
-       .text(
-         `Held on ${new Date(event.date).toDateString()}`,
-         0,
-         430,
-         { align: "center" }
-       );
+      /* ================= Event Date ================= */
 
-    /* Certificate ID */
+      doc.font("Helvetica")
+        .fontSize(16)
+        .fillColor("#6b7280")
+        .text(
+          `Held on ${new Date(event.date).toDateString()}`,
+          0,
+          430,
+          { align: "center" }
+        );
 
-    doc.fontSize(12)
-       .fillColor("#6b7280")
-       .text(
-         `Certificate ID: ${certId}`,
-         width / 2 - 150,
-         height - 120
-       );
+      /* ================= Certificate ID ================= */
 
-    /* QR Code */
+      doc.fontSize(12)
+        .fillColor("#6b7280")
+        .text(
+          `Certificate ID: ${certId}`,
+          width / 2 - 150,
+          height - 120
+        );
 
-    const verifyURL = `${process.env.FRONTEND_URL}/verify/${certId}`;
+      /* ================= QR Verification ================= */
 
-    const qr = await QRCode.toDataURL(verifyURL);
+      const verifyURL =
+        `${process.env.FRONTEND_URL}/verify/${certId}`;
 
-    const qrBuffer = Buffer.from(
-      qr.replace(/^data:image\/png;base64,/, ""),
-      "base64"
-    );
+      const qr = await QRCode.toDataURL(verifyURL);
 
-    doc.image(qrBuffer, width - 150, height - 160, {
-      width: 100
-    });
+      const qrBuffer = Buffer.from(
+        qr.replace(/^data:image\/png;base64,/, ""),
+        "base64"
+      );
 
-    doc.end();
+      doc.image(qrBuffer, width - 150, height - 160, {
+        width: 100
+      });
 
+      /* ================= Finish ================= */
+
+      doc.end();
+
+    } catch (error) {
+      reject(error);
+    }
   });
-
 };

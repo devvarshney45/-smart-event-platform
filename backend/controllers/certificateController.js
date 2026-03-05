@@ -6,10 +6,11 @@ import { generateCertificate } from "../utils/generateCertificate.js";
 import { sendEmail } from "../utils/sendEmail.js";
 
 export const downloadCertificate = async (req, res) => {
-
   try {
 
     const { eventId } = req.params;
+
+    /* ================= REGISTRATION CHECK ================= */
 
     const reg = await Registration.findOne({
       user: req.user.id,
@@ -18,20 +19,30 @@ export const downloadCertificate = async (req, res) => {
 
     if (!reg) {
       return res.status(404).json({
-        message: "Not registered"
+        message: "You are not registered for this event"
       });
     }
 
     if (!reg.attended) {
       return res.status(400).json({
-        message: "Not attended yet"
+        message: "Certificate available only after attendance"
       });
     }
 
-    const event = await Event.findById(eventId);
-    const user = await User.findById(req.user.id);
+    /* ================= FETCH EVENT + USER ================= */
 
-    /* Generate certificate ID */
+    const [event, user] = await Promise.all([
+      Event.findById(eventId),
+      User.findById(req.user.id)
+    ]);
+
+    if (!event || !user) {
+      return res.status(404).json({
+        message: "Event or user not found"
+      });
+    }
+
+    /* ================= GENERATE CERTIFICATE ID ================= */
 
     if (!reg.certificateId) {
 
@@ -42,7 +53,7 @@ export const downloadCertificate = async (req, res) => {
 
     }
 
-    /* Generate PDF buffer */
+    /* ================= GENERATE PDF ================= */
 
     const pdfBuffer = await generateCertificate(
       user,
@@ -50,25 +61,20 @@ export const downloadCertificate = async (req, res) => {
       reg.certificateId
     );
 
-    /* Send email in background */
+    /* ================= SEND EMAIL (NON BLOCKING) ================= */
 
-    try {
+    if (user?.email) {
 
-      if (user?.email) {
+      const frontendURL =
+        process.env.FRONTEND_URL ||
+        "http://localhost:5173";
 
-        const frontendURL =
-          process.env.FRONTEND_URL ||
-          "http://localhost:5173";
+      const verifyLink =
+        `${frontendURL}/verify/${reg.certificateId}`;
 
-        const verifyLink =
-          `${frontendURL}/verify/${reg.certificateId}`;
-
-        await sendEmail(
-
-          user.email,
-
-          "Your Event Certificate",
-
+      sendEmail(
+        user.email,
+        "Your Event Certificate",
 `Hello ${user.name},
 
 Your certificate for "${event.title}" is ready.
@@ -78,37 +84,37 @@ Certificate ID: ${reg.certificateId}
 Verify Certificate:
 ${verifyLink}
 
-Thank you.`
-
-        );
-
-      }
-
-    } catch (emailError) {
-
-      console.log("Email failed:", emailError);
+Thank you for attending the event.`
+      ).catch(err => {
+        console.log("Email failed:", err.message);
+      });
 
     }
 
-    /* Download certificate */
+    /* ================= DOWNLOAD RESPONSE ================= */
+
+    const safeEventTitle = event.title
+      .replace(/[^a-zA-Z0-9]/g, "_");
+
+    const safeUserName = user.name
+      .replace(/[^a-zA-Z0-9]/g, "_");
 
     res.setHeader("Content-Type", "application/pdf");
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=${user.name}-${event.title}-certificate.pdf`
+      `attachment; filename=${safeUserName}-${safeEventTitle}-certificate.pdf`
     );
 
-    res.send(pdfBuffer);
+    return res.send(pdfBuffer);
 
   } catch (error) {
 
-    console.error(error);
+    console.error("Certificate error:", error);
 
     return res.status(500).json({
       message: "Certificate generation failed"
     });
 
   }
-
 };
