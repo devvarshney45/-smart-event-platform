@@ -8,7 +8,7 @@ import path from "path";
 import connectDB from "./config/db.js";
 import { errorHandler } from "./middleware/errorMiddleware.js";
 
-/* ⭐ NEW */
+/* ⭐ EVENT REMINDER CRON */
 import { startEventReminder } from "./utils/eventReminder.js";
 
 import authRoutes from "./routes/authRoutes.js";
@@ -52,6 +52,12 @@ app.use(express.json());
 /* ---------------- STATIC FILES ---------------- */
 
 app.use("/uploads", express.static(path.join("uploads")));
+
+/* ---------------- ROOT ROUTE ---------------- */
+
+app.get("/", (req, res) => {
+  res.send("Smart Event Platform API Running 🚀");
+});
 
 /* ---------------- ROUTES ---------------- */
 
