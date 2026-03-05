@@ -2,6 +2,7 @@ import Registration from "../models/Registration.js";
 import { v4 as uuidv4 } from "uuid";
 
 export const markAttendance = async (req, res, next) => {
+
   try {
 
     const { qrIdentifier } = req.body;
@@ -10,6 +11,7 @@ export const markAttendance = async (req, res, next) => {
 
     if (!qrIdentifier) {
       return res.status(400).json({
+        success: false,
         message: "QR identifier missing"
       });
     }
@@ -21,13 +23,16 @@ export const markAttendance = async (req, res, next) => {
     const reg = await Registration.findOne({
       qrIdentifier: cleanQR
     })
-    .populate("user", "name email")   // ⭐ important
+    .populate("user", "name email")
     .populate("event", "title date");
 
     if (!reg) {
+
       return res.status(404).json({
-        message: "Invalid QR"
+        success: false,
+        message: "Invalid QR Code"
       });
+
     }
 
     /* ================= ALREADY MARKED ================= */
@@ -35,6 +40,8 @@ export const markAttendance = async (req, res, next) => {
     if (reg.attended) {
 
       return res.status(200).json({
+
+        success: true,
         message: "Attendance already marked",
         alreadyMarked: true,
         certificateReady: true,
@@ -48,7 +55,10 @@ export const markAttendance = async (req, res, next) => {
         event: {
           id: reg.event._id,
           title: reg.event.title
-        }
+        },
+
+        attendanceTime: reg.updatedAt,
+        certificateId: reg.certificateId
 
       });
 
@@ -57,8 +67,6 @@ export const markAttendance = async (req, res, next) => {
     /* ================= MARK ATTENDANCE ================= */
 
     reg.attended = true;
-
-    /* certificate id */
 
     if (!reg.certificateId) {
       reg.certificateId = uuidv4();
@@ -71,6 +79,8 @@ export const markAttendance = async (req, res, next) => {
     /* ================= RESPONSE ================= */
 
     return res.status(200).json({
+
+      success: true,
 
       message: "Attendance marked successfully",
 
@@ -89,6 +99,8 @@ export const markAttendance = async (req, res, next) => {
         title: reg.event.title
       },
 
+      attendanceTime: reg.updatedAt,
+
       certificateId: reg.certificateId
 
     });
@@ -97,7 +109,11 @@ export const markAttendance = async (req, res, next) => {
 
     console.error("Attendance error:", error);
 
-    next(error);
+    return res.status(500).json({
+      success: false,
+      message: "Attendance processing failed"
+    });
 
   }
+
 };
