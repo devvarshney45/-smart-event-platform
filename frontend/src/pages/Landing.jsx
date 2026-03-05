@@ -99,7 +99,7 @@ export default function Landing() {
 
           <Feature
             icon={<ShieldCheck />}
-            title="Secure Authentication"
+            title="Secure Auth"
             desc="JWT authentication with role-based access control."
           />
 
