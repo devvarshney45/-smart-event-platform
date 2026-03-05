@@ -16,7 +16,15 @@ export default function Scan() {
 
   const [markedStudents, setMarkedStudents] = useState([]);
 
+  /* ================= LOAD LOCAL STORAGE ================= */
+
   useEffect(() => {
+
+    const saved = localStorage.getItem("attendanceList");
+
+    if (saved) {
+      setMarkedStudents(JSON.parse(saved));
+    }
 
     startScanner();
 
@@ -25,6 +33,19 @@ export default function Scan() {
     };
 
   }, []);
+
+  /* ================= SAVE TO LOCAL STORAGE ================= */
+
+  useEffect(() => {
+
+    localStorage.setItem(
+      "attendanceList",
+      JSON.stringify(markedStudents)
+    );
+
+  }, [markedStudents]);
+
+  /* ================= START SCANNER ================= */
 
   const startScanner = async () => {
 
@@ -47,11 +68,14 @@ export default function Scan() {
 
     } catch (err) {
 
+      console.error(err);
       toast.error("Camera failed to start");
 
     }
 
   };
+
+  /* ================= HANDLE SCAN ================= */
 
   const handleScan = async (decodedText) => {
 
@@ -88,14 +112,26 @@ export default function Scan() {
         message: res.data.message
       });
 
-      /* add student to list */
+      /* ================= ADD TO LIST ================= */
+
+      const studentName =
+        res.data?.participant?.name || "Unknown";
+
+      const time =
+        new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
 
       setMarkedStudents(prev => [
+
         {
-          name: res.data.name,
-          time: new Date().toLocaleTimeString()
+          name: studentName,
+          time
         },
+
         ...prev
+
       ]);
 
       await stopScanner();
@@ -103,7 +139,8 @@ export default function Scan() {
     } catch (err) {
 
       const msg =
-        err.response?.data?.message || "Attendance failed";
+        err.response?.data?.message ||
+        "Attendance failed";
 
       toast.error(msg);
 
@@ -118,6 +155,8 @@ export default function Scan() {
 
   };
 
+  /* ================= STOP SCANNER ================= */
+
   const stopScanner = async () => {
 
     if (scannerRef.current) {
@@ -127,7 +166,9 @@ export default function Scan() {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
 
-      } catch {}
+      } catch (err) {
+        console.log(err);
+      }
 
       scannerRef.current = null;
 
@@ -136,6 +177,8 @@ export default function Scan() {
     setIsActive(false);
 
   };
+
+  /* ================= RESTART ================= */
 
   const restartScanner = async () => {
 
@@ -148,9 +191,20 @@ export default function Scan() {
 
   };
 
+  /* ================= CLEAR LIST ================= */
+
+  const clearAttendance = () => {
+
+    localStorage.removeItem("attendanceList");
+    setMarkedStudents([]);
+
+  };
+
+  /* ================= UI ================= */
+
   return (
 
-    <div className="max-w-5xl mx-auto mt-10 grid md:grid-cols-2 gap-6">
+    <div className="max-w-6xl mx-auto mt-10 grid md:grid-cols-2 gap-6">
 
       {/* Scanner */}
 
@@ -168,7 +222,9 @@ export default function Scan() {
         {lastResult && (
 
           <div className={`mt-6 text-center font-semibold ${
-            lastResult.success ? "text-green-600" : "text-red-500"
+            lastResult.success
+              ? "text-green-600"
+              : "text-red-500"
           }`}>
             {lastResult.message}
           </div>
@@ -188,18 +244,36 @@ export default function Scan() {
 
       </div>
 
+
       {/* Attendance List */}
 
       <div className="p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
 
-        <h2 className="text-xl font-bold mb-4">
-          Marked Attendance
-        </h2>
+        <div className="flex justify-between items-center mb-4">
+
+          <h2 className="text-xl font-bold">
+            Marked Attendance
+          </h2>
+
+          {markedStudents.length > 0 && (
+
+            <button
+              onClick={clearAttendance}
+              className="text-sm text-red-500 hover:text-red-600"
+            >
+              Clear
+            </button>
+
+          )}
+
+        </div>
 
         {markedStudents.length === 0 && (
+
           <p className="text-gray-500 text-sm">
             No attendance marked yet
           </p>
+
         )}
 
         <div className="space-y-3 max-h-[350px] overflow-y-auto">

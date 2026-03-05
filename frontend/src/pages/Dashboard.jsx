@@ -5,6 +5,7 @@ import Loader from "../components/ui/Loader";
 import FadeIn from "../components/animations/FadeIn";
 import { useAppStore } from "../app/store";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 import {
   BarChart,
@@ -18,14 +19,14 @@ import {
 
 export default function Dashboard() {
 
+const navigate = useNavigate();
+
 const user = useAppStore((state) => state.user);
 
 const [loading, setLoading] = useState(true);
 const [adminStats, setAdminStats] = useState(null);
 const [events, setEvents] = useState([]);
 const [myRegistrations, setMyRegistrations] = useState([]);
-
-/* ================= LOAD DATA ================= */
 
 useEffect(() => {
 
@@ -70,17 +71,11 @@ loadData();
 
 if (!user || loading) return <Loader />;
 
-/* ================= CHECK REGISTERED ================= */
-
 const isRegistered = (eventId) =>
 myRegistrations.some((reg) => reg.event?._id === eventId);
 
-/* ================= DEADLINE CHECK ================= */
-
 const isDeadlinePassed = (deadline) =>
 deadline && new Date() > new Date(deadline);
-
-/* ================= REGISTER EVENT ================= */
 
 const handleRegister = async (eventId) => {
 
@@ -134,8 +129,6 @@ return (
 
     <>
 
-      {/* STAT CARDS */}
-
       <div className="grid md:grid-cols-3 gap-6 mb-10">
 
         <Card>
@@ -160,9 +153,6 @@ return (
         </Card>
 
       </div>
-
-
-      {/* ATTENDANCE ANALYTICS CHART */}
 
       <Card>
 
@@ -196,7 +186,6 @@ return (
     </>
 
   )}
-
 
   {/* ================= PARTICIPANT ================= */}
 
@@ -259,7 +248,6 @@ return (
 
   )}
 
-
   {/* ================= ORGANIZER ================= */}
 
   {user.role === "organizer" && (
@@ -293,22 +281,50 @@ return (
 
   )}
 
-
   {/* ================= VOLUNTEER ================= */}
 
   {user.role === "volunteer" && (
 
-    <Card>
+    <div className="grid md:grid-cols-2 gap-6">
 
-      <h3 className="text-xl font-semibold">
-        QR Attendance Scanner
-      </h3>
+      <Card>
 
-      <p className="text-slate-500 mt-2">
-        Use the Scan page to mark attendance.
-      </p>
+        <h3 className="text-xl font-semibold">
+          QR Attendance Scanner
+        </h3>
 
-    </Card>
+        <p className="text-slate-500 mt-2">
+          Scan participant QR codes to mark attendance.
+        </p>
+
+        <button
+          onClick={() => navigate("/dashboard/scan")}
+          className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg"
+        >
+          Start Scanner
+        </button>
+
+      </Card>
+
+      <Card>
+
+        <h3 className="text-xl font-semibold">
+          Attendance Workflow
+        </h3>
+
+        <ul className="mt-3 text-slate-500 space-y-2 text-sm">
+
+          <li>1. Participant registers for event</li>
+          <li>2. System generates QR code</li>
+          <li>3. Volunteer scans QR</li>
+          <li>4. Attendance marked in system</li>
+          <li>5. Certificate becomes available</li>
+
+        </ul>
+
+      </Card>
+
+    </div>
 
   )}
 
