@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import api from "../services/axios";
 import toast from "react-hot-toast";
-import { useAppStore } from "../app/store";
 
 export default function Scan() {
 
@@ -11,26 +10,41 @@ export default function Scan() {
 
   const readerId = "reader";
 
-  const user = useAppStore((state) => state.user);
-
-  const storageKey = `attendanceList-${user?.id}`;
-
   const [isProcessing, setIsProcessing] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [lastResult, setLastResult] = useState(null);
 
   const [markedStudents, setMarkedStudents] = useState([]);
 
-  /* ================= LOAD STORAGE ================= */
+  /* ================= LOAD ATTENDANCE FROM DATABASE ================= */
 
   useEffect(() => {
 
-    const saved = localStorage.getItem(storageKey);
+    const loadAttendance = async () => {
 
-    if (saved) {
-      setMarkedStudents(JSON.parse(saved));
-    }
+      try {
 
+        const res = await api.get("/attendance/list");
+
+        const formatted = res.data.map((s) => ({
+          name: s.name,
+          time: new Date(s.time).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit"
+          })
+        }));
+
+        setMarkedStudents(formatted);
+
+      } catch (err) {
+
+        console.log("Attendance fetch error");
+
+      }
+
+    };
+
+    loadAttendance();
     startScanner();
 
     return () => {
@@ -38,17 +52,6 @@ export default function Scan() {
     };
 
   }, []);
-
-  /* ================= SAVE STORAGE ================= */
-
-  useEffect(() => {
-
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify(markedStudents)
-    );
-
-  }, [markedStudents]);
 
   /* ================= START SCANNER ================= */
 
@@ -211,15 +214,6 @@ export default function Scan() {
 
   };
 
-  /* ================= CLEAR LIST ================= */
-
-  const clearAttendance = () => {
-
-    localStorage.removeItem(storageKey);
-    setMarkedStudents([]);
-
-  };
-
   /* ================= UI ================= */
 
   return (
@@ -268,24 +262,9 @@ export default function Scan() {
 
       <div className="p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
 
-        <div className="flex justify-between items-center mb-4">
-
-          <h2 className="text-xl font-bold">
-            Marked Attendance
-          </h2>
-
-          {markedStudents.length > 0 && (
-
-            <button
-              onClick={clearAttendance}
-              className="text-sm text-red-500 hover:text-red-600"
-            >
-              Clear
-            </button>
-
-          )}
-
-        </div>
+        <h2 className="text-xl font-bold mb-4">
+          Marked Attendance
+        </h2>
 
         {markedStudents.length === 0 && (
 
