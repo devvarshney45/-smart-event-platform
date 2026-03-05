@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import api from "../services/axios";
 import toast from "react-hot-toast";
+import { useAppStore } from "../app/store";
 
 export default function Scan() {
 
@@ -10,17 +11,21 @@ export default function Scan() {
 
   const readerId = "reader";
 
+  const user = useAppStore((state) => state.user);
+
+  const storageKey = `attendanceList-${user?.id}`;
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [lastResult, setLastResult] = useState(null);
 
   const [markedStudents, setMarkedStudents] = useState([]);
 
-  /* ================= LOAD LOCAL STORAGE ================= */
+  /* ================= LOAD STORAGE ================= */
 
   useEffect(() => {
 
-    const saved = localStorage.getItem("attendanceList");
+    const saved = localStorage.getItem(storageKey);
 
     if (saved) {
       setMarkedStudents(JSON.parse(saved));
@@ -34,12 +39,12 @@ export default function Scan() {
 
   }, []);
 
-  /* ================= SAVE TO LOCAL STORAGE ================= */
+  /* ================= SAVE STORAGE ================= */
 
   useEffect(() => {
 
     localStorage.setItem(
-      "attendanceList",
+      storageKey,
       JSON.stringify(markedStudents)
     );
 
@@ -112,27 +117,42 @@ export default function Scan() {
         message: res.data.message
       });
 
-      /* ================= ADD TO LIST ================= */
-
       const studentName =
         res.data?.participant?.name || "Unknown";
 
-      const time =
-        new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit"
+      const time = new Date(
+        res.data.attendanceTime
+      ).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+
+      /* prevent duplicate */
+
+      if (!res.data.alreadyMarked) {
+
+        setMarkedStudents(prev => {
+
+          const exists = prev.some(
+            s => s.name === studentName
+          );
+
+          if (exists) return prev;
+
+          return [
+
+            {
+              name: studentName,
+              time
+            },
+
+            ...prev
+
+          ];
+
         });
 
-      setMarkedStudents(prev => [
-
-        {
-          name: studentName,
-          time
-        },
-
-        ...prev
-
-      ]);
+      }
 
       await stopScanner();
 
@@ -195,7 +215,7 @@ export default function Scan() {
 
   const clearAttendance = () => {
 
-    localStorage.removeItem("attendanceList");
+    localStorage.removeItem(storageKey);
     setMarkedStudents([]);
 
   };
@@ -243,7 +263,6 @@ export default function Scan() {
         )}
 
       </div>
-
 
       {/* Attendance List */}
 
